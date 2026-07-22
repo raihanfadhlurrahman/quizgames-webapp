@@ -1,4 +1,28 @@
-question_text,option_a,option_b,option_c,option_d,correct_option,category_name,difficulty,explanation,dalil,ustadz_hint
-"Berapakah jumlah Rukun Islam yang wajib diyakini oleh umat Muslim?","4 perkara","5 perkara","6 perkara","7 perkara","B","Rukun Islam","easy","Rukun Islam terdiri dari 5 perkara: Syahadat, Shalat, Zakat, Puasa, dan Haji bagi yang mampu.","HR. Bukhari dan Muslim","Ingatlah rukun dasar yang diawali dengan Syahadat."
-"Surah manakah yang dijuluki sebagai Ummul Qur'an (Induk Al-Qur'an)?","Surah Al-Ikhlas","Surah Al-Fatihah","Surah Yasin","Surah Al-Baqarah","B","Al-Qur'an","easy","Surah Al-Fatihah dinamakan Ummul Qur'an karena memuat seluruh inti ajaran Al-Qur'an.","HR. Tirmidzi","Surah ini selalu kita baca di setiap rakaat shalat."
-"Malam yang lebih baik dari 1000 bulan pada bulan Ramadhan dikenal dengan sebutan...","Malam Isra Mi'raj","Malam Nuzulul Qur'an","Malam Lailatul Qadar","Malam Nisfu Sya'ban","C","Ramadhan","medium","Lailatul Qadar adalah malam kemuliaan di bulan Ramadhan yang nilainya lebih baik dari seribu bulan.","QS. Al-Qadr: 3","Nama malam ini diabadikan dalam surah Al-Qadr."
+# =========================================================================================
+# PANDUAN PENGISIAN SOAL KUIS ISLAMI (CSV / EXCEL)
+#
+# ❓ Apakah Berkas CSV Boleh TANPA Tanda Petik ("")?
+# SANGAT BOLEH DAN BISA! 🎉
+#
+# Berikut adalah aturan standar CSV yang berlaku:
+# 1. Tanda petik ("") TIDAK WAJIB untuk teks biasa (contoh: Malaikat Jibril, Assalamu'alaikum, Al-Qur'an).
+#    Pembuat soal bisa menuliskan teks biasa tanpa tanda petik sama sekali!
+# 2. Tanda petik ("") HANYA DIBUTUHKAN jika di dalam satu isi kolom kalimat terdapat tanda koma (,),
+#    contoh: "Syahadat, Shalat, Zakat, Puasa, dan Haji". Tanda petik ini bertugas memberitahu Excel
+#    bahwa koma di dalam kalimat tersebut bukan pemisah kolom.
+# =========================================================================================
+question_text,option_a,option_b,option_c,option_d,correct_option,category_name,game_type,difficulty,explanation,dalil,ustadz_hint
+"Berapakah jumlah Rukun Islam yang wajib diyakini oleh umat Muslim?","4 perkara","5 perkara","6 perkara","7 perkara",B,Rukun Islam,millionaire,easy,"Rukun Islam terdiri dari 5 perkara: Syahadat, Shalat, Zakat, Puasa, dan Haji bagi yang mampu.",HR. Bukhari dan Muslim,Ingatlah rukun dasar yang diawali dengan Syahadat.
+Surah manakah yang dijuluki sebagai Ummul Qur'an (Induk Al-Qur'an)?,Surah Al-Ikhlas,Surah Al-Fatihah,Surah Yasin,Surah Al-Baqarah,B,Al-Qur'an,millionaire,easy,Surah Al-Fatihah dinamakan Ummul Qur'an karena memuat seluruh inti ajaran Al-Qur'an.,HR. Tirmidzi,Surah ini selalu kita baca di setiap rakaat shalat.
+Siapakah Nabi terakhir dan penutup para nabi (Khatamun Nabiyyin)?,Nabi Musa AS,Nabi Isa AS,Nabi Muhammad SAW,Nabi Ibrahim AS,C,Aqidah,kahoot,medium,Nabi Muhammad SAW adalah nabi penutup tidak ada nabi setelah beliau.,QS. Al-Ahzab: 40,Nabi penerima kitab suci Al-Qur'an.
+Malam yang lebih baik dari 1000 bulan pada bulan Ramadhan dikenal dengan sebutan...,Malam Isra Mi'raj,Malam Nuzulul Qur'an,Malam Lailatul Qadar,Malam Nisfu Sya'ban,C,Ramadhan,kahoot,medium,Lailatul Qadar adalah malam kemuliaan di bulan Ramadhan yang nilainya lebih baik dari seribu bulan.,QS. Al-Qadr: 3,Nama malam ini diabadikan dalam surah Al-Qadr.
+Siapakah malaikat yang bertugas menyampaikan wahyu kepada para nabi?,Malaikat Mikail,Malaikat Israfil,Malaikat Jibril,Malaikat Malik,C,Aqidah,kahoot,easy,Malaikat Jibril mendapat tugas menyampaikan wahyu Allah kepada para nabi dan rasul.,QS. An-Nahl: 102,Ingat malaikat yang menemui Nabi Muhammad ﷺ di Gua Hira.
+Apa ucapan yang dianjurkan ketika bertemu sesama Muslim?,Selamat pagi,Assalamu'alaikum,Permisi,Halo,B,Akhlak,millionaire,easy,Mengucapkan salam adalah sunnah dan dapat mempererat persaudaraan sesama Muslim.,HR. Muslim,Salam adalah doa keselamatan untuk sesama Muslim.
+Berapa jumlah surat dalam Al-Qur'an?,100 surat,114 surat,120 surat,99 surat,B,Al-Qur'an,millionaire,medium,Al-Qur'an terdiri dari 114 surat yang diturunkan kepada Nabi Muhammad ﷺ.,QS. Al-Hijr: 9,Angkanya lebih dari 100 tetapi kurang dari 120.
+Nabi yang terkenal mampu membuat kapal besar atas perintah Allah adalah...,Nabi Ibrahim AS,Nabi Nuh AS,Nabi Yusuf AS,Nabi Yunus AS,B,Nabi & Rasul,kahoot,easy,Nabi Nuh AS membuat kapal untuk menyelamatkan orang-orang beriman dari banjir besar.,QS. Hud: 37-38,Kisah banjir besar pasti sudah pernah kamu dengar.
+Ibadah yang paling utama dilakukan saat bulan Ramadhan adalah...,Tidur sepanjang hari,Bermain sepanjang hari,Berpuasa wajib,Berpiknik,C,Ramadhan,kahoot,easy,Puasa Ramadhan merupakan salah satu kewajiban bagi umat Islam yang memenuhi syarat.,QS. Al-Baqarah: 183,Ibadah ini dilakukan mulai Subuh hingga Maghrib.
+Rukun Islam yang pertama adalah...,Puasa Ramadhan,Shalat lima waktu,Membaca Al-Qur'an,Mengucapkan dua kalimat syahadat,D,Rukun Islam,millionaire,easy,Syahadat adalah pintu masuk seseorang ke dalam agama Islam.,HR. Bukhari dan Muslim,Semua Rukun Islam diawali dengan mengakui keesaan Allah dan kerasulan Muhammad ﷺ.
+Menghadap ke arah apakah umat Islam ketika melaksanakan shalat?,Gunung Uhud,Masjid Nabawi,Ka'bah,Masjid Al-Aqsa,C,Shalat,millionaire,easy,Umat Islam menghadap Ka'bah di Masjidil Haram ketika melaksanakan shalat.,QS. Al-Baqarah: 144,Arah ini disebut kiblat.
+Apa yang sebaiknya diucapkan setelah selesai makan?,Bismillah,Astaghfirullah,Alhamdulillah,Subhanallah,C,Doa Harian,millionaire,easy,Kita dianjurkan memuji Allah setelah selesai makan sebagai bentuk rasa syukur.,HR. Abu Dawud,Ucapan ini juga sering diucapkan ketika mendapat nikmat.
+Apa yang sebaiknya dilakukan sebelum memasuki masjid?,Berlari secepat mungkin,Melepas alas kaki dan masuk dengan tenang,Berbicara keras,Makan terlebih dahulu,B,Adab,kahoot,easy,Masjid adalah tempat ibadah sehingga kita menjaga kebersihan dan bersikap sopan.,HR. Bukhari dan Muslim,Jagalah kesopanan saat berada di rumah Allah.
+Jika melihat teman terjatuh di sekolah, apa yang sebaiknya kita lakukan?,Menertawakannya,Membiarkannya,Menolongnya dan memastikan ia baik-baik saja,Merekam dengan ponsel,C,Kehidupan Sehari-hari,kahoot,easy,Seorang Muslim dianjurkan saling membantu dan peduli kepada sesama.,QS. Al-Ma'idah: 2,Ingat bahwa membantu teman adalah perbuatan baik.

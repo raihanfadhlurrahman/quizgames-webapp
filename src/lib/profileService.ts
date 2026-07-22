@@ -18,36 +18,119 @@ export interface UserProfileData {
   total_games: number;
   total_correct: number;
   total_questions_answered: number;
+  role?: 'player' | 'admin';
   created_at: string;
 }
 
 const LOCAL_STORAGE_PROFILE_KEY = 'islamic_millionaire_user_profile_v3';
 
 export class ProfileService {
-  // Get Current Real User Profile
+  // Get Current Real User Profile from Local Storage Cache
   static getProfile(): UserProfileData {
     if (typeof window === 'undefined') {
-      return this.createDefaultProfile();
+      return this.createDefaultProfile('');
     }
 
     const saved = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.name) {
-          return {
-            ...this.createDefaultProfile(),
-            ...parsed,
-          };
+        if (parsed && parsed.id) {
+          return parsed;
         }
       } catch {
-        // Fallback if JSON parse fails
+        // Fallback
       }
     }
 
-    const defaultProf = this.createDefaultProfile();
-    this.saveProfile(defaultProf);
-    return defaultProf;
+    // Return an unauthenticated/guest empty profile structure
+    return this.createDefaultProfile('');
+  }
+
+  // Check if session is authenticated and fetch profile from Supabase
+  static async fetchProfileFromServer(): Promise<UserProfileData | null> {
+    if (!isSupabaseConfigured() || !supabase) {
+      return null;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user) {
+        // No session, clear local cache profile
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(LOCAL_STORAGE_PROFILE_KEY);
+        }
+        return null;
+      }
+
+      const userId = session.user.id;
+
+      // Fetch profile from players table
+      const { data: player, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error || !player) {
+        // If not found in database, insert a new row
+        const metaName = session.user.user_metadata?.name || 'Pemain Baru';
+        const metaRole = session.user.user_metadata?.role || 'player';
+        const newProfile: UserProfileData = {
+          ...this.createDefaultProfile(userId),
+          name: metaName,
+          role: metaRole,
+        };
+
+        await supabase.from('players').insert([{
+          id: userId,
+          name: newProfile.name,
+          avatar: newProfile.avatar,
+          level: newProfile.level,
+          xp: newProfile.xp,
+          amal_points: newProfile.amal_points,
+          total_games: newProfile.total_games,
+          total_correct: newProfile.total_correct,
+          total_questions_answered: newProfile.total_questions_answered,
+          role: newProfile.role,
+        }]);
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(newProfile));
+        }
+        return newProfile;
+      }
+
+      // Found profile in database, sync with localStorage cache
+      const profileData: UserProfileData = {
+        id: player.id,
+        name: player.name || 'Pemain Baru',
+        avatar: player.avatar || DEFAULT_AVATAR,
+        border_frame: player.border_frame || '/image/border/1.png',
+        border_color: player.border_color || '/image/border/1.png',
+        bg_profile: player.bg_profile || '/image/bgprofile/1.jpg',
+        title_tag: player.title_tag || 'Muslim Cerdas',
+        bio_quote: player.bio_quote || 'رَبِّ زِدْنِي عِلْمًا',
+        bio_translation: player.bio_translation || '"Ya Tuhanku, tambahkanlah kepadaku ilmu."',
+        bio_reference: player.bio_reference || '(QS. Taha: 114)',
+        level: player.level ?? 1,
+        xp: player.xp ?? 0,
+        amal_points: player.amal_points ?? 0,
+        total_games: player.total_games ?? 0,
+        total_correct: player.total_correct ?? 0,
+        total_questions_answered: player.total_questions_answered ?? 0,
+        role: player.role || 'player',
+        created_at: player.created_at || new Date().toISOString(),
+      };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(profileData));
+      }
+      return profileData;
+    } catch (e) {
+      console.warn('Failed to fetch profile from server:', e);
+      return this.getProfile();
+    }
   }
 
   // Save/Update Profile
@@ -64,18 +147,43 @@ export class ProfileService {
       localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(updated));
     }
 
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured() && supabase && updated.id) {
       try {
         await supabase.from('players').upsert([{
           id: updated.id,
           name: updated.name,
           avatar: updated.avatar,
+          border_frame: updated.border_frame,
+          border_color: updated.border_color,
+          bg_profile: updated.bg_profile,
+          title_tag: updated.title_tag,
+          bio_quote: updated.bio_quote,
+          bio_translation: updated.bio_translation,
+          bio_reference: updated.bio_reference,
           level: updated.level,
           xp: updated.xp,
           amal_points: updated.amal_points,
           total_games: updated.total_games,
+          total_correct: updated.total_correct,
+          total_questions_answered: updated.total_questions_answered,
+          role: updated.role || 'player',
           updated_at: new Date().toISOString(),
         }]);
+
+        // Propagate name and avatar changes to game sessions and leaderboard tables
+        await supabase.from('game_sessions')
+          .update({
+            player_name: updated.name,
+            player_avatar: updated.avatar
+          })
+          .eq('player_id', updated.id);
+
+        await supabase.from('leaderboard')
+          .update({
+            player_name: updated.name,
+            player_avatar: updated.avatar
+          })
+          .eq('player_id', updated.id);
       } catch (e) {
         console.warn('Supabase sync profile failed:', e);
       }
@@ -109,9 +217,16 @@ export class ProfileService {
     return this.saveProfile(updated);
   }
 
-  private static createDefaultProfile(): UserProfileData {
+  // Clear session locally
+  static clearLocalProfile(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LOCAL_STORAGE_PROFILE_KEY);
+    }
+  }
+
+  private static createDefaultProfile(id: string): UserProfileData {
     return {
-      id: 'player-' + Math.random().toString(36).substring(2, 9),
+      id: id || '',
       name: 'Raihan',
       avatar: DEFAULT_AVATAR,
       border_frame: '/image/border/1.png',
@@ -121,12 +236,13 @@ export class ProfileService {
       bio_quote: 'رَبِّ زِدْنِي عِلْمًا',
       bio_translation: '"Ya Tuhanku, tambahkanlah kepadaku ilmu."',
       bio_reference: '(QS. Taha: 114)',
-      level: 4,
-      xp: 320,
-      amal_points: 1200,
-      total_games: 18,
-      total_correct: 42,
-      total_questions_answered: 50,
+      level: 1,
+      xp: 0,
+      amal_points: 0,
+      total_games: 0,
+      total_correct: 0,
+      total_questions_answered: 0,
+      role: 'player',
       created_at: new Date().toISOString(),
     };
   }

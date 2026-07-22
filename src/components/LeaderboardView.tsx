@@ -2,11 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, RefreshCw, X, Sparkles } from 'lucide-react';
-import { LeaderboardEntry } from '@/types/game';
+import { Trophy, RefreshCw, X, Sparkles, Zap } from 'lucide-react';
+import { LeaderboardEntry, Category } from '@/types/game';
 import { GameService } from '@/lib/gameService';
 import { audioManager } from '@/lib/audioManager';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 interface LeaderboardViewProps {
   isOpen?: boolean;
@@ -22,6 +23,14 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [userProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [currentUserBest, setCurrentUserBest] = useState<{
+    rank: number;
+    score: number;
+    correct_count: number;
+    total_questions: number;
+    accuracy: number;
+    total_games: number;
+  } | null>(null);
 
   const handleClose = () => {
     audioManager.playClick();
@@ -29,18 +38,78 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     else if (onBack) onBack();
   };
 
-  const fetchLeaderboard = async () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Global');
+
+  useEffect(() => {
+    GameService.getCategories().then(setCategories);
+  }, []);
+
+  const fetchLeaderboard = async (catName: string = selectedCategory) => {
     setLoading(true);
-    const data = await GameService.getLeaderboard(20);
+    const data = await GameService.getLeaderboard(catName, 20);
     setEntries(data);
+
+    if (userProfile && userProfile.id) {
+      const topIdx = data.findIndex(e => e.player_id === userProfile.id || e.id === userProfile.id);
+      if (topIdx !== -1) {
+        const item = data[topIdx];
+        setCurrentUserBest({
+          rank: topIdx + 1,
+          score: item.score,
+          correct_count: item.correct_count,
+          total_questions: item.total_questions || item.correct_count,
+          accuracy: item.accuracy || 0,
+          total_games: item.total_games || 0,
+        });
+      } else {
+        const stats = await GameService.getUserBestStats(userProfile.id, catName);
+        setCurrentUserBest(stats);
+      }
+    } else {
+      setCurrentUserBest(null);
+    }
+
     setLoading(false);
   };
 
   useEffect(() => {
     if (isOpen) {
-      fetchLeaderboard();
+      fetchLeaderboard(selectedCategory);
+
+      if (isSupabaseConfigured() && supabase) {
+        const activeClient = supabase;
+        const channel = activeClient
+          .channel('realtime_leaderboard_all')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'players' },
+            () => {
+              fetchLeaderboard(selectedCategory);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'leaderboard' },
+            () => {
+              fetchLeaderboard(selectedCategory);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'game_sessions' },
+            () => {
+              fetchLeaderboard(selectedCategory);
+            }
+          )
+          .subscribe();
+
+        return () => {
+          activeClient.removeChannel(channel);
+        };
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, selectedCategory]);
 
   if (!isOpen) return null;
 
@@ -99,25 +168,66 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           </button>
 
           {/* SUBTITLE & REFRESH ACTION BAR */}
-          <div className="relative z-10 flex items-center justify-between mt-2 mb-3 pb-2.5 border-b-2 border-amber-200/80">
+          <div className="relative z-10 flex items-center justify-between mt-2 mb-2 pb-2 border-b-2 border-amber-200/80">
             <div>
-              <h3 className="text-base md:text-lg font-black text-[#78350F] flex items-center gap-2">
+              <h3 className="text-base md:text-lg font-black text-[#78350F] flex items-center gap-2 flex-wrap">
                 <span>Top Skor Sosialisasi KKN</span>
-                <Sparkles className="w-4 h-4 text-amber-500 fill-current" />
+                <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-emerald-400 animate-pulse">
+                  <Zap className="w-3 h-3 fill-current text-yellow-300" />
+                  LIVE REALTIME
+                </span>
               </h3>
-              <p className="text-xs text-amber-800 font-semibold">Pemain dengan perolehan Poin Amal tertinggi</p>
+              <p className="text-xs text-amber-800 font-semibold">
+                {selectedCategory === 'Global' ? 'Peringkat performa kuis terbaik seluruh pemain' : `Peringkat khusus kategori ${selectedCategory}`}
+              </p>
             </div>
 
             <button
               onClick={() => {
                 audioManager.playClick();
-                fetchLeaderboard();
+                fetchLeaderboard(selectedCategory);
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-[#FEF3C7] hover:bg-amber-200 text-[#78350F] font-extrabold text-xs border-2 border-[#FDE68A] transition cursor-pointer shadow-sm active:scale-95"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-[#B45309] ${loading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
+          </div>
+
+          {/* CATEGORY FILTER TAB BAR */}
+          <div className="relative z-10 flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 custom-scrollbar">
+            <button
+              onClick={() => {
+                audioManager.playClick();
+                setSelectedCategory('Global');
+                fetchLeaderboard('Global');
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-black transition flex-shrink-0 flex items-center gap-1 border cursor-pointer ${
+                selectedCategory === 'Global'
+                  ? 'bg-[#B45309] text-white border-amber-300 shadow-md'
+                  : 'bg-[#FFFDF3] text-amber-900 border-amber-200 hover:bg-amber-100'
+              }`}
+            >
+              <span>🌐 Global</span>
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id || cat.name}
+                onClick={() => {
+                  audioManager.playClick();
+                  setSelectedCategory(cat.name);
+                  fetchLeaderboard(cat.name);
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-black transition flex-shrink-0 flex items-center gap-1 border cursor-pointer ${
+                  selectedCategory === cat.name
+                    ? 'bg-[#B45309] text-white border-amber-300 shadow-md'
+                    : 'bg-[#FFFDF3] text-amber-900 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <span>{cat.icon || '🕌'}</span>
+                <span>{cat.name}</span>
+              </button>
+            ))}
           </div>
 
           {/* LEADERBOARD CONTENT AREA */}
@@ -138,10 +248,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 const isTop1 = index === 0;
                 const isTop2 = index === 1;
                 const isTop3 = index === 2;
-                const isCurrentPlayer = entry.player_name === userProfile.name;
-                const playerBorder = isCurrentPlayer
-                  ? (userProfile.border_frame || userProfile.border_color || '/image/border/1.png')
-                  : '/image/border/1.png';
+                const isCurrentPlayer = entry.player_id === userProfile.id || entry.id === userProfile.id;
+                const playerBorder = entry.border_frame || (isCurrentPlayer ? userProfile.border_frame : '/image/border/1.png');
 
                 return (
                   <div
@@ -156,7 +264,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                         : 'bg-white/90 border-slate-200 text-slate-700 hover:border-amber-300 shadow-xs'
                     }`}
                   >
-                    {/* LEFT SIDE: RANK + AVATAR + NAME */}
+                    {/* LEFT SIDE: RANK + AVATAR + NAME + TITLE */}
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Rank Badge */}
                       <span className={`w-7 text-center text-base md:text-lg font-black flex-shrink-0 ${
@@ -181,18 +289,30 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                         />
                       </div>
 
-                      {/* Name & Subtext */}
+                      {/* Name, Title Tag & Performance Stats Subtext */}
                       <div className="min-w-0">
-                        <span className="font-extrabold text-[#1E293B] block truncate leading-tight text-sm md:text-base">
-                          {entry.player_name} {isCurrentPlayer && <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.2 rounded-md ml-1">(Anda)</span>}
-                        </span>
-                        <span className="text-[11px] text-slate-500 font-medium block truncate">
-                          Benar {entry.correct_count} • Waktu {entry.duration_seconds}s
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-[#1E293B] block truncate leading-tight text-sm md:text-base">
+                            {entry.player_name}
+                          </span>
+                          {isCurrentPlayer && (
+                            <span className="text-[10px] bg-amber-500 text-white font-bold px-1.5 py-0.2 rounded-md">
+                              (Anda)
+                            </span>
+                          )}
+                          {entry.title_tag && (
+                            <span className="text-[9.5px] bg-amber-100 text-amber-800 border border-amber-300 font-bold px-1.5 py-0.2 rounded-md">
+                              ⭐ {entry.title_tag}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-medium block truncate mt-0.5">
+                          🎯 Akurasi {entry.accuracy ?? 0}% ({entry.correct_count} Benar) • 🎮 {entry.total_games ?? 0} Kuis
                         </span>
                       </div>
                     </div>
 
-                    {/* RIGHT SIDE: SCORE */}
+                    {/* RIGHT SIDE: SCORE (POIN AMAL) */}
                     <div className="text-right flex-shrink-0 pl-2">
                       <span className="font-black text-amber-800 text-base md:text-lg block leading-tight">
                         {entry.score.toLocaleString('id-ID')}
@@ -204,6 +324,36 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* USER'S OWN BEST RANK STICKY CARD */}
+          {userProfile && userProfile.id && (
+            <div className="relative z-10 mt-3 p-3 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border-2 border-amber-400/50 rounded-2xl flex items-center justify-between text-xs sm:text-sm font-bold text-amber-900 shadow-xs backdrop-blur-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-base">👤</span>
+                <div className="min-w-0">
+                  <span className="font-extrabold text-[#78350F] block leading-tight">
+                    Statistik Terbaik Anda
+                  </span>
+                  <span className="text-[10.5px] text-amber-800 font-medium block truncate">
+                    {currentUserBest ? (
+                      `🎯 Akurasi ${currentUserBest.accuracy}% (${currentUserBest.correct_count} Benar) • 🎮 ${currentUserBest.total_games} Kuis Selesai`
+                    ) : (
+                      'Belum ada skor tercatat. Selesaikan kuis untuk masuk peringkat!'
+                    )}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="text-right flex-shrink-0 pl-2">
+                <span className="font-black text-[#78350F] text-sm sm:text-base block leading-tight">
+                  {currentUserBest ? `#${currentUserBest.rank} (${currentUserBest.score.toLocaleString('id-ID')} Pt)` : '-'}
+                </span>
+                <span className="text-[9px] text-amber-800 font-black tracking-wider uppercase block">
+                  Peringkat Saya
+                </span>
+              </div>
             </div>
           )}
 

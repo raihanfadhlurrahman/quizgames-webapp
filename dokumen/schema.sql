@@ -24,6 +24,8 @@ CREATE TABLE IF NOT EXISTS public.categories (
 CREATE TABLE IF NOT EXISTS public.questions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
+    category_name VARCHAR(100) DEFAULT 'Campuran',
+    game_type VARCHAR(20) DEFAULT 'millionaire' CHECK (game_type IN ('millionaire', 'kahoot')),
     difficulty VARCHAR(20) DEFAULT 'medium' CHECK (difficulty IN ('easy', 'medium', 'hard')),
     question_text TEXT NOT NULL,
     option_a TEXT NOT NULL,
@@ -45,13 +47,24 @@ CREATE TABLE IF NOT EXISTS public.players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     avatar VARCHAR(255) DEFAULT '👦🏻',
+    border_frame VARCHAR(255) DEFAULT '/image/border/1.png',
+    border_color VARCHAR(255) DEFAULT '/image/border/1.png',
+    bg_profile VARCHAR(255) DEFAULT '/image/bgprofile/1.jpg',
+    title_tag VARCHAR(100) DEFAULT 'Muslim Cerdas',
+    bio_quote TEXT DEFAULT 'رَبِّ زِدْنِي عِلْمًا',
+    bio_translation TEXT DEFAULT '"Ya Tuhanku, tambahkanlah kepadaku ilmu."',
+    bio_reference VARCHAR(255) DEFAULT '(QS. Taha: 114)',
     level INT DEFAULT 1,
     xp INT DEFAULT 0,
     amal_points INT DEFAULT 0,
     total_games INT DEFAULT 0,
+    total_correct INT DEFAULT 0,
+    total_questions_answered INT DEFAULT 0,
+    role VARCHAR(20) DEFAULT 'player' CHECK (role IN ('player', 'admin')),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
 
 -- ------------------------------------------
 -- 4. GAME SESSIONS & HISTORY
@@ -77,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.game_sessions (
 -- ------------------------------------------
 CREATE TABLE IF NOT EXISTS public.leaderboard (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID UNIQUE REFERENCES public.players(id) ON DELETE CASCADE,
     session_id UUID REFERENCES public.game_sessions(id) ON DELETE CASCADE,
     player_name VARCHAR(100) NOT NULL,
     player_avatar VARCHAR(255) DEFAULT '👦🏻',
@@ -104,22 +118,69 @@ ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leaderboard ENABLE ROW LEVEL SECURITY;
 
--- Allow public access
+-- Clean existing policies to prevent conflict errors
+DROP POLICY IF EXISTS "Allow public read categories" ON public.categories;
+DROP POLICY IF EXISTS "Allow admin all categories" ON public.categories;
+
+DROP POLICY IF EXISTS "Allow public read questions" ON public.questions;
+DROP POLICY IF EXISTS "Allow admin all questions" ON public.questions;
+
+DROP POLICY IF EXISTS "Allow public read players" ON public.players;
+DROP POLICY IF EXISTS "Allow public insert players" ON public.players;
+DROP POLICY IF EXISTS "Allow public update players" ON public.players;
+DROP POLICY IF EXISTS "Allow public select" ON public.players;
+DROP POLICY IF EXISTS "Allow individual insert" ON public.players;
+DROP POLICY IF EXISTS "Allow individual update" ON public.players;
+DROP POLICY IF EXISTS "Allow admin all players" ON public.players;
+
+DROP POLICY IF EXISTS "Allow public read game_sessions" ON public.game_sessions;
+DROP POLICY IF EXISTS "Allow public insert game_sessions" ON public.game_sessions;
+DROP POLICY IF EXISTS "Allow public update game_sessions" ON public.game_sessions;
+DROP POLICY IF EXISTS "Allow admin all game_sessions" ON public.game_sessions;
+
+DROP POLICY IF EXISTS "Allow public read leaderboard" ON public.leaderboard;
+DROP POLICY IF EXISTS "Allow public insert leaderboard" ON public.leaderboard;
+DROP POLICY IF EXISTS "Allow public update leaderboard" ON public.leaderboard;
+DROP POLICY IF EXISTS "Allow admin all leaderboard" ON public.leaderboard;
+
+-- Categories & Questions
 CREATE POLICY "Allow public read categories" ON public.categories FOR SELECT USING (true);
 CREATE POLICY "Allow public read questions" ON public.questions FOR SELECT USING (true);
+
+-- Players
 CREATE POLICY "Allow public read players" ON public.players FOR SELECT USING (true);
 CREATE POLICY "Allow public insert players" ON public.players FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update players" ON public.players FOR UPDATE USING (true);
-CREATE POLICY "Allow public read leaderboard" ON public.leaderboard FOR SELECT USING (true);
-CREATE POLICY "Allow public insert game_sessions" ON public.game_sessions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public insert leaderboard" ON public.leaderboard FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update players" ON public.players FOR UPDATE USING (true) WITH CHECK (true);
 
--- Allow all operations for authenticated admin users
+-- Game Sessions
+CREATE POLICY "Allow public read game_sessions" ON public.game_sessions FOR SELECT USING (true);
+CREATE POLICY "Allow public insert game_sessions" ON public.game_sessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update game_sessions" ON public.game_sessions FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Leaderboard
+CREATE POLICY "Allow public read leaderboard" ON public.leaderboard FOR SELECT USING (true);
+CREATE POLICY "Allow public insert leaderboard" ON public.leaderboard FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update leaderboard" ON public.leaderboard FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Admin Override
 CREATE POLICY "Allow admin all categories" ON public.categories FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all questions" ON public.questions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all players" ON public.players FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all game_sessions" ON public.game_sessions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all leaderboard" ON public.leaderboard FOR ALL USING (auth.role() = 'authenticated');
+
+-- ------------------------------------------
+-- 7.1 SUPABASE REALTIME PUBLICATION SETUP
+-- ------------------------------------------
+-- Enable Realtime broadcast for leaderboard table so connected clients get instant live updates
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.leaderboard;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
 
 
 -- ==========================================
@@ -181,3 +242,85 @@ VALUES
     'Rasulullah SAW bersabda: "Alhamdulillah (Al-Fatihah) adalah Ummul Qur''an dan Ummul Kitab." (HR. Tirmidzi)',
     'Surah ini selalu kita baca di setiap rakaat shalat.'
 );
+
+-- ==========================================
+-- 9. USER REGISTRATION TRIGGER (SUPABASE AUTH SYNC)
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.players (id, name, avatar, level, xp, amal_points, total_games, role)
+  VALUES (
+    new.id,
+    COALESCE(new.raw_user_meta_data->>'name', 'Pemain Baru'),
+    '👦🏻',
+    1, 0, 0, 0,
+    COALESCE(new.raw_user_meta_data->>'role', 'player')
+  );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ==========================================
+-- 10. MULTIPLAYER KAHOOT-STYLE QUIZ ROOMS
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.quiz_rooms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    room_code VARCHAR(6) UNIQUE NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    category_name VARCHAR(100) DEFAULT 'Campuran',
+    status VARCHAR(20) DEFAULT 'waiting' CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished')),
+    current_question_index INT DEFAULT 0,
+    total_questions INT DEFAULT 10,
+    created_by UUID REFERENCES public.players(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    started_at TIMESTAMPTZ,
+    finished_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS public.quiz_room_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    room_id UUID REFERENCES public.quiz_rooms(id) ON DELETE CASCADE,
+    player_id UUID REFERENCES public.players(id) ON DELETE CASCADE,
+    player_name VARCHAR(100) NOT NULL,
+    player_avatar VARCHAR(255),
+    border_frame VARCHAR(255),
+    bg_profile VARCHAR(255),
+    score INT DEFAULT 0,
+    correct_count INT DEFAULT 0,
+    joined_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(room_id, player_id)
+);
+
+ALTER TABLE public.quiz_rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_room_players ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all access to quiz_rooms" ON public.quiz_rooms;
+CREATE POLICY "Allow all access to quiz_rooms" ON public.quiz_rooms FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow all access to quiz_room_players" ON public.quiz_room_players;
+CREATE POLICY "Allow all access to quiz_room_players" ON public.quiz_room_players FOR ALL USING (true);
+
+-- Enable Supabase Realtime for Quiz Rooms
+ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_rooms;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_room_players;
+
+-- ==========================================
+-- QUICK MIGRATION FIX FOR EXISTING DATABASES
+-- Copy and run this in Supabase SQL Editor:
+-- ==========================================
+ALTER TABLE public.quiz_room_players DROP CONSTRAINT IF EXISTS quiz_room_players_player_id_fkey;
+ALTER TABLE public.quiz_room_players ADD COLUMN IF NOT EXISTS bg_profile VARCHAR(255);
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS game_type VARCHAR(20) DEFAULT 'millionaire' CHECK (game_type IN ('millionaire', 'kahoot'));
+
+-- Fix quiz_rooms status check constraint safely:
+UPDATE public.quiz_rooms SET status = 'waiting' WHERE status NOT IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress') OR status IS NULL;
+ALTER TABLE public.quiz_rooms DROP CONSTRAINT IF EXISTS quiz_rooms_status_check;
+ALTER TABLE public.quiz_rooms ADD CONSTRAINT quiz_rooms_status_check CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress'));
+
+
+

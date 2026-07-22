@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, RefreshCw, Award, Home, ShieldCheck, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { GameState, PlayerProfile, Question, GameSessionResult } from '@/types/game';
@@ -9,9 +9,13 @@ import { SetupScreen } from '@/components/SetupScreen';
 import { QuizArena } from '@/components/QuizArena';
 import { CertificateGenerator } from '@/components/CertificateGenerator';
 import { LeaderboardView } from '@/components/LeaderboardView';
+import { RoomJoinModal } from '@/components/RoomJoinModal';
+import { KahootPlayerArena } from '@/components/KahootPlayerArena';
 import { GameService } from '@/lib/gameService';
 import { ProfileService } from '@/lib/profileService';
 import { audioManager } from '@/lib/audioManager';
+import { AuthService } from '@/lib/authService';
+import { QuizRoom } from '@/types/game';
 
 export default function HomePage() {
   const [gameState, setGameState] = useState<GameState>('WELCOME');
@@ -20,6 +24,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showSummaryLeaderboardModal, setShowSummaryLeaderboardModal] = useState<boolean>(false);
+  const [showRoomJoinModal, setShowRoomJoinModal] = useState<boolean>(false);
+  const [joinedKahootRoom, setJoinedKahootRoom] = useState<QuizRoom | null>(null);
 
   // Summary State
   const [finalResult, setFinalResult] = useState<{
@@ -28,6 +34,23 @@ export default function HomePage() {
     totalScore: number;
     durationSeconds: number;
   } | null>(null);
+  useEffect(() => {
+    // Initial profile sync on mount
+    ProfileService.fetchProfileFromServer();
+
+    // Listen to authentication changes
+    const unsubscribe = AuthService.onAuthStateChange(async (event, session) => {
+      if (session) {
+        await ProfileService.fetchProfileFromServer();
+      } else {
+        ProfileService.clearLocalProfile();
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   const handleToggleMute = () => {
     const muted = audioManager.toggleMute();
@@ -59,10 +82,13 @@ export default function HomePage() {
     // Accumulate Poin Amal & XP to real profile
     await ProfileService.addGameResults(totalScore, correctCount, questions.length);
 
+    const activeProfile = ProfileService.getProfile();
+
     if (player) {
       const result: GameSessionResult = {
-        player_name: player.name,
-        player_avatar: player.avatar,
+        player_id: (activeProfile?.id && activeProfile.id.trim() !== '') ? activeProfile.id : undefined,
+        player_name: activeProfile?.name || player.name,
+        player_avatar: activeProfile?.avatar || player.avatar,
         category_name: player.category,
         mode: 'Classic Millionaire',
         total_questions: questions.length,
@@ -72,7 +98,10 @@ export default function HomePage() {
         duration_seconds: durationSeconds,
         event_tag: 'KKN Wedomartani',
       };
-      await GameService.submitGameResult(result);
+      const subRes = await GameService.submitGameResult(result);
+      if (!subRes.success) {
+        console.error('Leaderboard score submission warning:', subRes.error);
+      }
     }
   };
 
@@ -93,10 +122,29 @@ export default function HomePage() {
 
       {/* Screen Views */}
       {gameState === 'WELCOME' && (
-        <WelcomeScreen
-          onStart={handleStartSetup}
-          isMuted={isMuted}
-          onToggleMute={handleToggleMute}
+        <>
+          <WelcomeScreen
+            onStart={handleStartSetup}
+            onOpenRoomJoin={() => setShowRoomJoinModal(true)}
+            isMuted={isMuted}
+            onToggleMute={handleToggleMute}
+          />
+          <RoomJoinModal
+            isOpen={showRoomJoinModal}
+            onClose={() => setShowRoomJoinModal(false)}
+            onJoinedAndStarted={(room) => {
+              setShowRoomJoinModal(false);
+              setJoinedKahootRoom(room);
+            }}
+          />
+        </>
+      )}
+
+      {/* KAHOOT LIVE MULTIPLAYER ARENA */}
+      {joinedKahootRoom && (
+        <KahootPlayerArena
+          initialRoom={joinedKahootRoom}
+          onReturnHome={() => setJoinedKahootRoom(null)}
         />
       )}
 

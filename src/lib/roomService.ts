@@ -1,0 +1,405 @@
+import { QuizRoom, QuizRoomPlayer, Question } from '@/types/game';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { ProfileService, UserProfileData } from './profileService';
+import { GameService } from './gameService';
+
+export class RoomService {
+  // Generate random 6-digit numeric PIN (e.g. 849201)
+  static generatePin(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  // Create a new Quiz Room (Admin Host)
+  static async createRoom(
+    title: string,
+    categoryName: string = 'Campuran',
+    totalQuestions: number = 10,
+    createdBy?: string
+  ): Promise<QuizRoom | null> {
+    const pin = this.generatePin();
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('quiz_rooms')
+          .insert([
+            {
+              room_code: pin,
+              title: title.trim() || 'Kuis Live Sosialisasi KKN',
+              category_name: categoryName,
+              total_questions: totalQuestions,
+              status: 'waiting',
+              current_question_index: 0,
+              created_by: createdBy || null,
+            },
+          ])
+          .select()
+          .single();
+
+        if (!error && data) {
+          return data as QuizRoom;
+        } else {
+          console.error('Failed to create room in Supabase:', error);
+        }
+      } catch (e) {
+        console.error('Exception creating room:', e);
+      }
+    }
+
+    // Fallback local mock room
+    return {
+      id: `room-${Date.now()}`,
+      room_code: pin,
+      title: title.trim() || 'Kuis Live Sosialisasi KKN',
+      category_name: categoryName,
+      status: 'waiting',
+      current_question_index: 0,
+      total_questions: totalQuestions,
+      created_by: createdBy,
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  // Get Room details by 6-Digit PIN
+  static async getRoomByPin(pin: string): Promise<QuizRoom | null> {
+    const cleanPin = pin.trim().replace(/\s+/g, '');
+    if (cleanPin.length !== 6) return null;
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('quiz_rooms')
+          .select('*')
+          .eq('room_code', cleanPin)
+          .maybeSingle();
+
+        if (!error && data) return data as QuizRoom;
+      } catch (e) {
+        console.warn('Error fetching room by PIN:', e);
+      }
+    }
+    return null;
+  }
+
+  // Player joins room with their profile
+  static async joinRoom(roomId: string, profile: UserProfileData): Promise<QuizRoomPlayer | null> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // First ensure player profile exists in public.players table to satisfy foreign key constraint
+        await ProfileService.saveProfile(profile);
+
+        const payloadFull = {
+          room_id: roomId,
+          player_id: profile.id,
+          player_name: profile.name,
+          player_avatar: profile.avatar || '/image/pp/1.png',
+          border_frame: profile.border_frame || profile.border_color || '/image/border/1.png',
+          bg_profile: profile.bg_profile || '/image/bgprofile/1.jpg',
+          score: 0,
+          correct_count: 0,
+        };
+
+        const { data, error } = await supabase
+          .from('quiz_room_players')
+          .upsert([payloadFull], { onConflict: 'room_id,player_id' })
+          .select()
+          .single();
+
+        if (!error && data) return data as QuizRoomPlayer;
+
+        // If error occurred (e.g. bg_profile column missing in DB), retry without bg_profile
+        if (error) {
+          console.warn('Retrying joinRoom without bg_profile:', error.message);
+          const { bg_profile, ...payloadWithoutBg } = payloadFull;
+          const { data: dataFallback, error: errFallback } = await supabase
+            .from('quiz_room_players')
+            .upsert([payloadWithoutBg], { onConflict: 'room_id,player_id' })
+            .select()
+            .single();
+
+          if (!errFallback && dataFallback) return dataFallback as QuizRoomPlayer;
+        }
+      } catch (e) {
+        console.warn('Error joining room in Supabase:', e);
+      }
+    }
+
+    return {
+      id: `rp-${Date.now()}`,
+      room_id: roomId,
+      player_id: profile.id,
+      player_name: profile.name,
+      player_avatar: profile.avatar || '/image/pp/1.png',
+      border_frame: profile.border_frame || '/image/border/1.png',
+      bg_profile: profile.bg_profile || '/image/bgprofile/1.jpg',
+      score: 0,
+      correct_count: 0,
+    };
+  }
+
+  // Fetch list of joined players in room
+  static async getRoomPlayers(roomId: string): Promise<QuizRoomPlayer[]> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('quiz_room_players')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('score', { ascending: false })
+          .order('joined_at', { ascending: true });
+
+        if (!error && data) return data as QuizRoomPlayer[];
+      } catch (e) {
+        console.warn('Error getting room players:', e);
+      }
+    }
+    return [];
+  }
+
+  // Player Leaves Room (Removes single player from room)
+  static async leaveRoom(roomId: string, playerId: string): Promise<boolean> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase
+          .from('quiz_room_players')
+          .delete()
+          .eq('room_id', roomId)
+          .eq('player_id', playerId);
+      } catch (e) {
+        console.warn('Error leaving room in Supabase:', e);
+      }
+    }
+    return true;
+  }
+
+  // Local active room status cache for fail-safe cross-tab sync
+  static getLocalRoomCache(roomId: string): { status?: any; current_question_index?: number; question_ids?: string[] } | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved = localStorage.getItem(`quiz_room_state_${roomId}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  static setLocalRoomCache(roomId: string, status: any, questionIndex: number, questionIds?: string[]) {
+    if (typeof window === 'undefined') return;
+    try {
+      const existing = RoomService.getLocalRoomCache(roomId);
+      localStorage.setItem(
+        `quiz_room_state_${roomId}`,
+        JSON.stringify({
+          status,
+          current_question_index: questionIndex,
+          timestamp: Date.now(),
+          question_ids: questionIds || existing?.question_ids,
+        })
+      );
+    } catch {}
+  }
+
+  // Host Updates Room Status (waiting -> question -> feedback -> standing -> finished)
+  static async updateRoomStatus(
+    roomId: string,
+    status: 'waiting' | 'question' | 'feedback' | 'standing' | 'finished',
+    questionIndex: number = 0,
+    questionIds?: string[]
+  ): Promise<boolean> {
+    this.setLocalRoomCache(roomId, status, questionIndex, questionIds);
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const updates: any = {
+          status,
+          current_question_index: questionIndex,
+        };
+        if (status === 'question' && questionIndex === 0) {
+          updates.started_at = new Date().toISOString();
+        }
+        if (status === 'finished') {
+          updates.finished_at = new Date().toISOString();
+        }
+
+        const { error } = await supabase
+          .from('quiz_rooms')
+          .update(updates)
+          .eq('id', roomId);
+
+        if (error && error.code === '23514') {
+          console.warn('Supabase status check constraint fallback triggered:', error.message);
+          // Omit status field if constrained by old DB check, but update current_question_index
+          await supabase
+            .from('quiz_rooms')
+            .update({ current_question_index: questionIndex })
+            .eq('id', roomId);
+        }
+
+        return !error;
+      } catch (e) {
+        console.error('Error updating room status:', e);
+      }
+    }
+    return true;
+  }
+
+  // Submit player score for current question
+  static async submitRoomScore(
+    roomId: string,
+    playerId: string,
+    scoreAdd: number,
+    isCorrect: boolean
+  ) {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // Fetch current score
+        const { data: cur } = await supabase
+          .from('quiz_room_players')
+          .select('score, correct_count')
+          .eq('room_id', roomId)
+          .eq('player_id', playerId)
+          .single();
+
+        const oldScore = cur?.score || 0;
+        const oldCorrect = cur?.correct_count || 0;
+
+        await supabase
+          .from('quiz_room_players')
+          .update({
+            score: oldScore + scoreAdd,
+            correct_count: oldCorrect + (isCorrect ? 1 : 0),
+          })
+          .eq('room_id', roomId)
+          .eq('player_id', playerId);
+      } catch (e) {
+        console.warn('Error submitting room score:', e);
+      }
+    }
+  }
+
+  // Subscribe to Realtime Updates on Room & Joined Players (with periodic 2s polling fallback & cross-tab sync)
+  static subscribeToRoom(
+    roomId: string,
+    onRoomChange: (room: QuizRoom) => void,
+    onPlayersChange: (players: QuizRoomPlayer[]) => void
+  ) {
+    // Immediate initial sync
+    this.getRoomPlayers(roomId).then(onPlayersChange);
+
+    // Initial check for local cache
+    const initialCache = RoomService.getLocalRoomCache(roomId);
+
+    // 2-Second Polling Fallback (ensures live sync even if WebSockets are inactive/blocked)
+    const pollInterval = setInterval(() => {
+      if (isSupabaseConfigured() && supabase) {
+        supabase
+          .from('quiz_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data) {
+              const localCache = RoomService.getLocalRoomCache(roomId);
+              const roomData = data as QuizRoom;
+              if (localCache && localCache.status && localCache.status !== 'waiting') {
+                roomData.status = localCache.status;
+                roomData.current_question_index = localCache.current_question_index ?? roomData.current_question_index;
+              }
+              if (localCache?.question_ids) {
+                roomData.question_ids = localCache.question_ids;
+              }
+              onRoomChange(roomData);
+            }
+          });
+        this.getRoomPlayers(roomId).then(onPlayersChange);
+      }
+    }, 2000);
+
+    // Cross-tab LocalStorage listener for instant multi-tab sync
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === `quiz_room_state_${roomId}` && e.newValue) {
+        try {
+          const state = JSON.parse(e.newValue);
+          if (state && state.status) {
+            if (isSupabaseConfigured() && supabase) {
+              supabase
+                .from('quiz_rooms')
+                .select('*')
+                .eq('id', roomId)
+                .maybeSingle()
+                .then(({ data }) => {
+                  const roomData = (data as QuizRoom) || { id: roomId, status: state.status };
+                  roomData.status = state.status;
+                  roomData.current_question_index = state.current_question_index || 0;
+                  if (state.question_ids) roomData.question_ids = state.question_ids;
+                  onRoomChange(roomData);
+                });
+            } else {
+              onRoomChange({
+                id: roomId,
+                room_code: '',
+                title: '',
+                category_name: 'Campuran',
+                status: state.status,
+                current_question_index: state.current_question_index || 0,
+              } as QuizRoom);
+            }
+          }
+        } catch {}
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageEvent);
+    }
+
+    if (!isSupabaseConfigured() || !supabase) {
+      return () => {
+        clearInterval(pollInterval);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('storage', handleStorageEvent);
+        }
+      };
+    }
+
+    const activeClient = supabase;
+    const channelName = `quiz_room_${roomId}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const channel = activeClient.channel(channelName);
+
+    channel
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quiz_rooms', filter: `id=eq.${roomId}` },
+        (payload) => {
+          if (payload.new) {
+            const localCache = RoomService.getLocalRoomCache(roomId);
+            const roomData = payload.new as QuizRoom;
+            if (localCache && localCache.status && localCache.status !== 'waiting') {
+              roomData.status = localCache.status;
+              roomData.current_question_index = localCache.current_question_index ?? roomData.current_question_index;
+            }
+            if (localCache?.question_ids) {
+              roomData.question_ids = localCache.question_ids;
+            }
+            onRoomChange(roomData);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quiz_room_players', filter: `room_id=eq.${roomId}` },
+        () => {
+          this.getRoomPlayers(roomId).then(onPlayersChange);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageEvent);
+      }
+      activeClient.removeChannel(channel);
+    };
+  }
+}

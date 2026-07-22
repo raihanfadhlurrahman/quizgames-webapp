@@ -15,12 +15,14 @@ import {
   Heart,
   Tag,
   Image as ImageIcon,
+  LogOut,
 } from 'lucide-react';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
 import { AVAILABLE_AVATARS } from '@/data/avatars';
 import { AVAILABLE_BORDERS } from '@/data/borders';
 import { AVAILABLE_BGPROFILES } from '@/data/bgprofile';
 import { audioManager } from '@/lib/audioManager';
+import { AuthService } from '@/lib/authService';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -160,6 +162,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     if (onProfileUpdated) onProfileUpdated(updated);
   };
 
+  const handleLogout = async () => {
+    audioManager.playClick();
+    await AuthService.signOut();
+    ProfileService.clearLocalProfile();
+    window.location.reload();
+  };
+
   // Border & BG setup
   const currentBorderFrame = profile.border_frame || profile.border_color || '/image/border/1.png';
   const currentBgProfile = profile.bg_profile || '/image/bgprofile/1.jpg';
@@ -281,21 +290,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
 
               {/* Title Badge Below Avatar (Customizable Tag - Full Prominent Size) */}
-              <div className="mt-2.5 flex items-center gap-1.5">
-                <div className="bg-gradient-to-r from-[#D97706] to-[#78350F] text-white px-3.5 py-1 rounded-full text-xs font-black shadow-md flex items-center gap-1.5 border border-white/40">
-                  <Tag className="w-3.5 h-3.5 fill-current text-yellow-300" />
-                  <span>{profile.title_tag || 'Muslim Cerdas'}</span>
+              <div className="mt-2.5 flex items-center gap-1.5 flex-col">
+                <div className="flex items-center gap-1.5">
+                  <div className="bg-gradient-to-r from-[#D97706] to-[#78350F] text-white px-3.5 py-1 rounded-full text-xs font-black shadow-md flex items-center gap-1.5 border border-white/40">
+                    <Tag className="w-3.5 h-3.5 fill-current text-yellow-300" />
+                    <span>{profile.title_tag || 'Muslim Cerdas'}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      audioManager.playClick();
+                      setShowTagPicker(!showTagPicker);
+                    }}
+                    className="w-6.5 h-6.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-md cursor-pointer transition"
+                    title="Ubah Tag Gelar"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    audioManager.playClick();
-                    setShowTagPicker(!showTagPicker);
-                  }}
-                  className="w-6.5 h-6.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center shadow-md cursor-pointer transition"
-                  title="Ubah Tag Gelar"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
+                
+                {profile.role === 'admin' && (
+                  <div className="mt-1 bg-gradient-to-r from-purple-600 to-indigo-700 text-white text-[10px] font-black px-3 py-0.5 rounded-full border border-purple-400/60 shadow-sm">
+                    ⚙️ Admin KKN
+                  </div>
+                )}
               </div>
 
               {/* TITLE TAG PICKER / INPUT PANEL */}
@@ -649,6 +666,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {profile.amal_points.toLocaleString('id-ID')}
               </div>
             </div>
+          </div>
+
+          {/* Logout Button */}
+          <div className="relative z-10 pt-4 flex justify-center border-t border-amber-200/40 mt-3">
+            <button
+              onClick={handleLogout}
+              className="py-2 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md hover:scale-105 active:scale-95 transition"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>KELUAR AKUN (LOGOUT)</span>
+            </button>
           </div>
         </motion.div>
       </div>

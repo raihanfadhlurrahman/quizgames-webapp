@@ -33,3 +33,9 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 node_modules
+
+# Scratch & diagnostic scripts
+scratch/
+deep_diagnose.js
+test_room_db.js
+

@@ -1,105 +1,163 @@
-# 📝 Catatan Evaluasi & Rekomendasi Alur (Islamic Millionaire Web App)
-
-Berikut adalah tanggapan, saran perbaikan UI/UX interaktif, serta alur (flow) terbaik untuk eksekusi game kuis **Islamic Millionaire** dalam kegiatan KKN:
 
 ---
 
-## 1. 🎨 Solusi UI "Mulai Bermain" & Background Interaktif
+## 1. 🏆 Dokumentasi Lengkap Sistem Leaderboard
 
-### **Masalah Saat Ini**:
-Background halaman awal masih berupa gradien statis navy gelap dengan bulatan blur biasa, sehingga terasa kaku dan kurang mengundang interaksi pemain.
-
-### **Rekomendasi Peningkatan UI Interaktif**:
-1. **Interactive Canvas Particles (Bintang & Lentera Islami)**:
-   - Membuat efek bintang gemerlap (*twinkling stars*) dan lentera Ramadhan melayang di latar belakang.
-   - **Fitur Interaktif Mouse**: Ketika kursor mouse digerakkan, bintang-bintang akan mengikuti gerakan mouse (*parallax cursor trail*) atau meletupkan percikan cahaya (*sparkles*) ketika di-klik.
-2. **Interactive 3D Card Tilt Effect**:
-   - Kartu utama *"ISLAMIC MILLIONAIRE"* menggunakan efek kemiringan 3D (*tilt effect*) yang miring mengikuti posisi kursor mouse pemain secara real-time.
-3. **Interactive Widget "Kata Hikmah Hari Ini"**:
-   - Menambahkan widget ucapan Islami / hadits singkat yang bisa di-klik pemain untuk berganti kalimat (*"Klik untuk Kata Hikmah Baru 🎲"*).
-4. **Interactive Audio Control & Ambient Sound**:
-   - Menambahkan animasi gelombang suara (*audio visualizer bar*) pada tombol sound agar pemain tahu musik sedang aktif dan bisa mengubah suasana audio.
+Dokumentasi ini menjelaskan secara menyeluruh arsitektur, skema database, alur logika backend/frontend, serta fitur UI/UX dari sistem **Papan Peringkat (Leaderboard)** pada aplikasi *Islamic Millionaire*.
 
 ---
 
-## 2. 🛠️ Mekanisme CRUD Soal, Kategori, & Level untuk Panitia KKN
+### **A. Konsep Utama & Aturan Bisnis (Core Business Rules)**
 
-Agar aplikasi dapat dikelola secara mandiri oleh panitia KKN saat ini maupun angkatan KKN berikutnya, berikut adalah rancangan alur CRUD pada **Admin Dashboard (`/admin`)**:
-
-### **A. CRUD Soal (Manajemen Bank Soal)**:
-* **Tambah Soal**: Form interaktif dengan input:
-  - Teks Pertanyaan
-  - 4 Opsi Jawaban (A, B, C, D) & Penentuan Kunci Jawaban
-  - Pemilihan Kategori & Tingkat Kesulitan (Easy, Medium, Hard)
-  - Penjelasan Edukatif & Dalil Rujukan (HR / Ayat Al-Qur'an)
-  - Petunjuk Ustadz Hint
-* **Edit & Hapus Soal**: Tabel interaktif dengan tombol edit modal & tombol hapus.
-* **Fitur Import Massal (Excel / CSV)**:
-  - Panitia KKN dapat menyiapkan soal di **Google Sheets / Excel** dengan format template yang disediakan, lalu mengunggah berkas CSV untuk memasukkan puluhan soal sekaligus secara otomatis!
-
-### **B. CRUD Kategori Soal**:
-* Panitia dapat membuat kategori baru (misal: *"Sirah Nabawiyah"*, *"Sejarah Islam"*, *"Tajwid"*).
-* Mengubah nama kategori, deskripsi, dan ikon emoji yang ditampilkan di menu setup pemain.
-
-### **C. Pengaturan Level & Tingkat Kesulitan Soal**:
-* Setiap soal diberi label kesulitan:
-  - 🟢 **Easy** (Mudah): Untuk anak SD / pertanyaan dasar.
-  - 🟡 **Medium** (Sedang): Untuk SMP-SMA / pertanyaan umum.
-  - 🔴 **Hard** (Sulit): Untuk Mahasiswa-Orang Tua / pertanyaan detail.
-* **Sistem Auto-Level pada Game**: Game Classic Millionaire akan otomatis menyusun 15 soal dengan graduasi tingkat kesulitan (Soal 1–5: Easy, Soal 6–10: Medium, Soal 11–15: Hard).
+1. **Satu Skor Terbaik Per Akun (Single Best Score per Player)**:
+   - Setiap pemain (`player_id`) hanya memiliki **maksimal 1 baris entri** di tabel `leaderboard`.
+   - Jika pemain bermain kuis berkali-kali, sistem tidak akan menambahkan baris baru, melainkan hanya memperbarui (*UPDATE*) baris yang ada apabila perolehan skor baru **lebih tinggi** dibanding skor terbaik sebelumnya (atau jumlah detik pengerjaan **lebih cepat** pada skor yang sama).
+2. **Data Cloud Real-time 100% (Supabase Integration)**:
+   - Papan peringkat sepenuhnya tersimpan dan diambil langsung dari cloud database Supabase.
+   - Data tiruan (*dummy mock data*) seperti *Ahmad, Dinda, Fajar* serta cache fallback lokal telah dihapus total. Jika belum ada skor tercatat di database, sistem menampilkan pesan *empty state* yang interaktif.
+3. **Propagasi Otomatis Perubahan Profil (Auto Profile Propagation)**:
+   - Ketika pemain mengubah Nama, Avatar, atau Bingkai Profil (PNG Border Frame) di menu Profil, sistem secara otomatis mengeksekusi *UPDATE query* ke tabel `leaderboard` & `game_sessions` berdasarkan `player_id`. Dengan demikian, nama dan tampilan lama pada leaderboard langsung tergantikan dengan data yang paling mutakhir.
+4. **Sorotan Pemain Aktif & Peringkat Personal**:
+   - Pemain yang sedang login akan diberikan penanda visual `(Anda)` pada barisnya di tabel peringkat.
+   - Apabila pemain tidak masuk dalam daftar Top 20 teratas, kartu khusus di bagian bawah modal leaderboard (*Statistik Terbaik Anda*) akan menampilkan peringkat eksak dan skor terbaik milik pemain tersebut.
 
 ---
 
-## 3. 💡 Saran Alur Permainan (User Flow) Terbaik untuk Kegiatan KKN
+### **B. Struktur Skema Database (Database Schema & RLS)**
 
-Untuk memaksimalkan daya tarik (*engagement*) saat acara sosialisasi KKN, berikut adalah alur permainan ideal dari awal hingga akhir:
+Sistem leaderboard bergantung pada dua tabel utama di PostgreSQL Supabase: `public.game_sessions` dan `public.leaderboard`.
 
-```mermaid
-graph TD
-    A[1. Welcoming Screen Interaktif] -->|Klik Mulai / Interaksi Background| B[2. Setup Pemain & Mode Game]
-    B -->|Input Nama, Avatar, & Kategori| C[3. Arena Kuis - 15 Soal Bertingkat]
-    C -->|Jawab Soal & Gunakan Lifeline 50:50 / Hint| D{Apakah Jawaban Benar?}
-    D -->|Benar ✅| E[Confetti + Modal Dalil & Tambah Poin]
-    D -->|Salah ❌| F[Modal Kunci Jawaban & Edukasi Dalil]
-    E -->|Lanjut ke Soal Berikutnya| G[4. Layar Hasil & Statistik]
-    F -->|Lanjut ke Soal Berikutnya| G
-    G --> H[Generate Sertifikat PNG]
-    G --> I[Tampilkan Live Leaderboard Sesi KKN]
+#### **1. Tabel `public.leaderboard`**
+Tabel ini menyimpan 1 entri skor terbaik untuk tiap pemain yang terdaftar.
+
+| Nama Kolom | Tipe Data | Keterangan / Constraint |
+| :--- | :--- | :--- |
+| `id` | `UUID` | Primary Key (Default: `uuid_generate_v4()`) |
+| `player_id` | `UUID` | Foreign Key ke `players(id)` ON DELETE CASCADE, **`UNIQUE`** |
+| `session_id` | `UUID` | Foreign Key ke `game_sessions(id)` ON DELETE CASCADE |
+| `player_name` | `VARCHAR(100)` | Nama pemain saat mencetak skor terbaik |
+| `player_avatar` | `VARCHAR(255)` | Path gambar PNG avatar pemain |
+| `score` | `INT` | Perolehan Poin Amal tertinggi |
+| `correct_count` | `INT` | Jumlah soal yang dijawab benar |
+| `duration_seconds` | `INT` | Total durasi waktu pengerjaan kuis (dalam detik) |
+| `event_tag` | `VARCHAR(100)` | Label acara (Default: `'General Sesi KKN'`) |
+| `created_at` | `TIMESTAMPTZ` | Waktu pencatatan skor terbaik |
+
+#### **2. Kebijakan Keamanan RLS (Row Level Security Policies)**
+Untuk memastikan data dapat dibaca dan dikirim tanpa terhalang RLS (Row Level Security), aturan kebijakan berikut diterapkan pada tabel `leaderboard` & `game_sessions`:
+
+```sql
+-- Aktifkan RLS
+ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leaderboard ENABLE ROW LEVEL SECURITY;
+
+-- Policies untuk public (Anon & Authenticated)
+CREATE POLICY "Allow public read game_sessions" ON public.game_sessions FOR SELECT USING (true);
+CREATE POLICY "Allow public insert game_sessions" ON public.game_sessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update game_sessions" ON public.game_sessions FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow public read leaderboard" ON public.leaderboard FOR SELECT USING (true);
+CREATE POLICY "Allow public insert leaderboard" ON public.leaderboard FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update leaderboard" ON public.leaderboard FOR UPDATE USING (true) WITH CHECK (true);
 ```
 
 ---
 
-## 4. 🔑 Panitia / Admin Flow (Alur Pengelolaan & Persistensi Soal)
+### **C. Alur Logika Pembaruan Skor (Backend / Service Logic)**
 
-Berikut adalah diagram alur khusus Panitia KKN (*Admin Flow*) untuk mengelola soal, kategori, dan persiapan sesi acara sosialisasi:
+Mekanisme submit skor dikelola oleh `GameService.submitGameResult()` pada berkas `src/lib/gameService.ts`.
 
 ```mermaid
 graph TD
-    A1[Masuk ke /admin] -->|Input Passcode 'kkn2026'| A2[Dashboard Panitia KKN]
-    
-    A2 --> B1[1. Kelola Bank Soal - Persistent CRUD]
-    A2 --> B2[2. Import Soal Massal via CSV/Excel]
-    A2 --> B3[3. Kelola Kategori & Level Soal]
-    A2 --> B4[4. Reset Leaderboard per Sesi Acara]
-    
-    B1 -->|Tambah / Edit / Hapus| C1[Simpan Permanen ke Supabase DB / LocalStorage]
-    B2 -->|Upload File CSV| C1
-    B3 -->|Atur Easy/Medium/Hard| C1
-    B4 -->|Kosongkan Peringkat| C2[Papan Peringkat Bersih Siap Digunakan]
-    
-    C1 --> D1[Bank Soal Terbarui Otomatis di Game]
-    C2 --> D2[Siap Ditayangkan di Proyektor Acara KKN]
+    A[Pemain Menyelesaikan Kuis] --> B[Memanggil GameService.submitGameResult]
+    B --> C[1. Insert ke Tabel game_sessions]
+    C --> D{Apakah Insert Session Berhasil?}
+    D -->|Gagal ❌| E[Log Warning & Stop]
+    D -->|Berhasil ✅| F{Apakah player_id Tersedia?}
+    F -->|Tidak Memiliki ID / Guest| G[Insert Entri Baru ke leaderboard]
+    F -->|Ada player_id Valid| H[Query leaderboard BERDASARKAN player_id]
+    H --> I{Apakah Player Sudah Memiliki Skor di Leaderboard?}
+    I -->|Belum Ada| J[INSERT Skor Pertama ke leaderboard]
+    I -->|Sudah Ada| K{Apakah Skor Baru > Skor Lama OR Skor Sama & Waktu Lebih Cepat?}
+    K -->|Ya ✅| L[UPDATE Baris leaderboard dengan Skor & Waktu Baru]
+    K -->|Tidak ❌| M[Pertahankan Skor Terbaik Lama]
 ```
 
-### **Detail Alur Kerja Panitia KKN**:
+#### **Kode Implementasi Penyeleksian Skor Terbaik (`src/lib/gameService.ts`)**:
+```typescript
+if (result.player_id) {
+  // 1. Cek apakah pemain sudah memiliki entri di leaderboard
+  const { data: existing, error: fetchErr } = await supabase
+    .from('leaderboard')
+    .select('*')
+    .eq('player_id', result.player_id)
+    .maybeSingle();
 
-1. **Autentikasi Panitia**:
-   - Panitia membuka URL `/admin` dan memasukkan passcode `ceritawedomartani`.
-2. **Pengeditan Soal Secara Permanen (Persistent Storage)**:
-   - **Masalah Sebelum Perbaikan**: Pengeditan soal di layar admin sebelumnya belum tersimpan ke media penyimpanan permanen (LocalStorage / Supabase DB), sehingga saat halaman di-refresh, perubahan kembali ke awal.
-   - **Solusi Alur Baru**: Setiap kali Panitia menambah, mengedit, atau menghapus soal, sistem akan langsung mengeksekusi `GameService.saveQuestions()` yang memperbarui data secara permanen di database Supabase maupun `localStorage` browser.
-3. **Impor Soal Massal via CSV/Excel**:
-   - Panitia tidak perlu mengetik soal satu per satu. Cukup buat file Excel/CSV dengan kolom: `question_text`, `option_a`, `option_b`, `option_c`, `option_d`, `correct_option`, `category_name`, `difficulty`, `explanation`, `dalil`, `ustadz_hint`, lalu klik tombol **Upload CSV**.
-4. **Persiapan Acara Sosialisasi (Event Mode)**:
-   - Sebelum acara dimulai, Panitia menekan tombol **"Reset Leaderboard"** agar skor peserta dari sesi/hari sebelumnya dikosongkan.
-   - Saat acara berlangsung, Panitia dapat membuka layar Leaderboard di proyektor untuk menayangkan skor peserta secara live!
+  if (!fetchErr) {
+    if (!existing) {
+      // Belum ada -> Masukkan entri pertama
+      await supabase.from('leaderboard').insert([{
+        player_id: result.player_id,
+        session_id: sessionData.id,
+        player_name: result.player_name,
+        player_avatar: result.player_avatar,
+        score: result.total_score,
+        correct_count: result.correct_answers,
+        duration_seconds: result.duration_seconds,
+        event_tag: result.event_tag,
+      }]);
+    } else if (
+      result.total_score > existing.score ||
+      (result.total_score === existing.score && result.duration_seconds < existing.duration_seconds)
+    ) {
+      // Ada & skor baru lebih baik -> UPDATE skor terbaik
+      await supabase.from('leaderboard')
+        .update({
+          session_id: sessionData.id,
+          player_name: result.player_name,
+          player_avatar: result.player_avatar,
+          score: result.total_score,
+          correct_count: result.correct_answers,
+          duration_seconds: result.duration_seconds,
+          event_tag: result.event_tag,
+          created_at: new Date().toISOString(),
+        })
+        .eq('player_id', result.player_id);
+    }
+  }
+}
+```
+
+---
+
+### **D. Fitur Tampilan UI Component (`LeaderboardView.tsx`)**
+
+Komponen UI leaderboard terletak pada berkas `src/components/LeaderboardView.tsx`. Berada di dalam modal pop-up dengan estetika Islami bernuansa emas dan mika transparan (*glassmorphism*).
+
+#### **Fitur-fitur Utama Layar Leaderboard**:
+1. **Lencana Juara (Rank Medals)**:
+   - 🥇 Peringkat 1: Gradien Emas Berkilau (`from-[#FEF3C7] to-[#F59E0B]`)
+   - 🥈 Peringkat 2: Gradien Perak Modern (`from-slate-100 to-slate-300`)
+   - 🥉 Peringkat 3: Gradien Perunggu Warm (`from-amber-100 to-amber-200`)
+2. **Frame Avatar PNG Dynamic Overlay**:
+   - Menampilkan avatar karakter pemain beserta bingkai *border frame* PNG kustom yang dipilih pemain pada profilnya.
+3. **Kartu Peringkat Saya (Personal Best Stats Card)**:
+   - Terletak di bagian paling bawah modal leaderboard.
+   - Menampilkan peringkat eksak pemain aktif (`#1`, `#5`, dll.), skor Poin Amal tertinggi, jumlah jawaban benar, dan durasi detik pengerjaan.
+   - Diperoleh dari fungsi `GameService.getUserBestStats(playerId)` yang menghitung peringkat secara dinamis berdasarkan jumlah pemain dengan skor yang lebih tinggi (`gt('score', userScore)`).
+4. **Tombol Refresh Real-time**:
+   - Memungkinkan pemain atau panitia me-refresh data leaderboard di tempat tanpa perlu memuat ulang (*reload*) seluruh halaman aplikasi.
+
+---
+
+### **E. Pengelolaan Admin & Pembersihan Data (Admin Operations)**
+
+1. **Reset Leaderboard per Sesi Acara**:
+   - Pada panel Admin (`/admin`), panitia KKN dapat menekan tombol **Reset Leaderboard**.
+   - Fungsi `GameService.resetLeaderboard()` akan menghapus seluruh isi tabel `leaderboard` di Supabase sehingga papan peringkat bersih dan siap digunakan untuk sesi acara kuis baru.
+2. **Pembersihan Manual via SQL**:
+   - Jika panitia ingin mengosongkan riwayat kuis dan leaderboard secara total via SQL Editor Supabase:
+     ```sql
+     TRUNCATE TABLE public.leaderboard CASCADE;
+     TRUNCATE TABLE public.game_sessions CASCADE;
+     ```
