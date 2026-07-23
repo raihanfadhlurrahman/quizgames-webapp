@@ -22,7 +22,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 }) => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [userProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
   const [currentUserBest, setCurrentUserBest] = useState<{
     rank: number;
     score: number;

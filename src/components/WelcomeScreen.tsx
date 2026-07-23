@@ -46,7 +46,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   userProfile: initialProfile,
   onProfileUpdated,
 }) => {
-  const [profile, setProfile] = useState<UserProfileData>(initialProfile || ProfileService.getProfile());
+  const [profile, setProfile] = useState<UserProfileData | null>(initialProfile || ProfileService.getProfile());
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
@@ -64,7 +64,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         setProfile(p);
         if (onProfileUpdated) onProfileUpdated(p);
       } else {
-        setProfile(ProfileService.getProfile());
+        const local = ProfileService.getProfile();
+        setProfile(local);
+        if (!local) {
+          setShowAuthModal(true); // Popup Login/Register modal automatically when not logged in
+        }
       }
     });
   }, []);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Star,
@@ -66,9 +66,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   onProfileUpdated,
 }) => {
-  const [profile, setProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [profile, setProfile] = useState<UserProfileData | null>(ProfileService.getProfile());
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
-  const [nameInput, setNameInput] = useState<string>(profile.name);
+  const [nameInput, setNameInput] = useState<string>(profile?.name || '');
+
+  useEffect(() => {
+    if (isOpen) {
+      const p = ProfileService.getProfile();
+      setProfile(p);
+      if (p) setNameInput(p.name);
+    }
+  }, [isOpen]);
 
   // Customizer Panels Toggles
   const [showAvatarPicker, setShowAvatarPicker] = useState<boolean>(false);
@@ -82,7 +90,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [customBioTranslation, setCustomBioTranslation] = useState<string>('');
   const [customBioReference, setCustomBioReference] = useState<string>('');
 
-  if (!isOpen) return null;
+  if (!isOpen || !profile) return null;
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;

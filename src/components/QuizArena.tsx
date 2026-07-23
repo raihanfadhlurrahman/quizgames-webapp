@@ -50,7 +50,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
   const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false);
   const [lastIsCorrect, setLastIsCorrect] = useState<boolean>(false);
 
-  const [userProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
   const currentQuestion = questions[currentIndex];
 
   // Answer Handler Callback

@@ -18,7 +18,7 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
   const [room, setRoom] = useState<QuizRoom>(initialRoom);
   const [players, setPlayers] = useState<QuizRoomPlayer[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [userProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
 
   // Player state per question
   const [selectedOption, setSelectedOption] = useState<'A' | 'B' | 'C' | 'D' | null>(null);

@@ -14,12 +14,12 @@ interface SetupScreenProps {
 }
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, onBack }) => {
-  const [profile, setProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [profile, setProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
   const [selectedCategory, setSelectedCategory] = useState<string>('Campuran');
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    const activeProf = ProfileService.getProfile();
+    const activeProf = ProfileService.getProfileOrDefault();
     setProfile(activeProf);
     GameService.getCategories().then(setCategories);
   }, []);

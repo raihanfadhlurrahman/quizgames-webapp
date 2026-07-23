@@ -26,9 +26,9 @@ const LOCAL_STORAGE_PROFILE_KEY = 'islamic_millionaire_user_profile_v3';
 
 export class ProfileService {
   // Get Current Real User Profile from Local Storage Cache
-  static getProfile(): UserProfileData {
+  static getProfile(): UserProfileData | null {
     if (typeof window === 'undefined') {
-      return this.createDefaultProfile('');
+      return null;
     }
 
     const saved = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
@@ -43,12 +43,7 @@ export class ProfileService {
       }
     }
 
-    // Return an unauthenticated/guest profile structure with a persistent unique ID
-    const defaultProfile = this.createDefaultProfile('');
-    try {
-      localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(defaultProfile));
-    } catch {}
-    return defaultProfile;
+    return null;
   }
 
   // Check if session is authenticated and fetch profile from Supabase
@@ -139,7 +134,7 @@ export class ProfileService {
 
   // Save/Update Profile
   static async saveProfile(profile: Partial<UserProfileData>): Promise<UserProfileData> {
-    const current = this.getProfile();
+    const current = this.getProfile() || this.createDefaultProfile('');
     const updated: UserProfileData = {
       ...current,
       ...profile,
@@ -198,8 +193,8 @@ export class ProfileService {
 
   // Accumulate Score & XP After Match
   static async addGameResults(score: number, correctCount: number = 0, totalQuestions: number = 15): Promise<UserProfileData> {
-    const current = this.getProfile();
-    const newAmalPoints = current.amal_points + score;
+    const current = this.getProfile() || this.createDefaultProfile('');
+    const newAmalPoints = (current.amal_points || 0) + score;
     const newXP = current.xp + score;
     const newTotalGames = current.total_games + 1;
     const newTotalCorrect = current.total_correct + correctCount;
@@ -221,6 +216,11 @@ export class ProfileService {
     return this.saveProfile(updated);
   }
 
+  // Get Current Profile or Default fallback
+  static getProfileOrDefault(): UserProfileData {
+    return this.getProfile() || this.createDefaultProfile('');
+  }
+
   // Clear session locally
   static clearLocalProfile(): void {
     if (typeof window !== 'undefined') {
@@ -228,11 +228,11 @@ export class ProfileService {
     }
   }
 
-  private static createDefaultProfile(id: string): UserProfileData {
+  static createDefaultProfile(id: string = ''): UserProfileData {
     const finalId = id && id.trim() !== '' ? id : `guest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     return {
       id: finalId,
-      name: 'Raihan',
+      name: 'Pemain Baru',
       avatar: DEFAULT_AVATAR,
       border_frame: '/image/border/1.png',
       border_color: '/image/border/1.png',

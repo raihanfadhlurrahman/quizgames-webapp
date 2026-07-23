@@ -24,7 +24,7 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [joinedRoom, setJoinedRoom] = useState<QuizRoom | null>(null);
   const [players, setPlayers] = useState<QuizRoomPlayer[]>([]);
-  const [userProfile] = useState<UserProfileData>(ProfileService.getProfile());
+  const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
 
   useEffect(() => {
     if (!isOpen) {
