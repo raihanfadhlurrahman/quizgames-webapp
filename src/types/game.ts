@@ -92,3 +92,35 @@ export interface QuizRoomPlayer {
 }
 
 export type GameState = 'WELCOME' | 'SETUP' | 'PLAYING' | 'FEEDBACK' | 'SUMMARY' | 'LEADERBOARD';
+
+export type LeaderboardTab = 'MILLIONAIRE' | 'QUROOM';
+
+export interface QuRoomSessionSummary {
+  id: string;
+  room_code: string;
+  title: string;
+  category_name: string;
+  status: string;
+  total_questions: number;
+  total_players: number;
+  created_at: string;
+  top_winner?: {
+    player_id: string;
+    player_name: string;
+    player_avatar: string;
+    score: number;
+  };
+}
+
+export interface QuRoomSessionParticipant {
+  id: string;
+  room_id: string;
+  player_id: string;
+  player_name: string;
+  player_avatar: string;
+  border_frame?: string;
+  bg_profile?: string;
+  score: number;
+  correct_count: number;
+  rank?: number;
+}

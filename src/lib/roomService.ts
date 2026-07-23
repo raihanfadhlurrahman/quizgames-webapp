@@ -407,4 +407,181 @@ export class RoomService {
       activeClient.removeChannel(channel);
     };
   }
+
+  // Fetch the 5 most recent QuRoom sessions for Leaderboard
+  static async getRecentQuRoomSessions(limit: number = 5): Promise<any[]> {
+    if (isSupabaseConfigured() && supabase) {
+      const activeClient = supabase;
+      try {
+        const { data: rooms, error } = await activeClient
+          .from('quiz_rooms')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        if (!error && rooms && rooms.length > 0) {
+          const results = await Promise.all(
+            rooms.map(async (room: any) => {
+              const { data: players } = await activeClient
+                .from('quiz_room_players')
+                .select('*')
+                .eq('room_id', room.id)
+                .order('score', { ascending: false });
+
+              const playerCount = players ? players.length : 0;
+              const topWinner = players && players.length > 0 ? {
+                player_id: players[0].player_id,
+                player_name: players[0].player_name,
+                player_avatar: players[0].player_avatar,
+                score: players[0].score,
+              } : undefined;
+
+              return {
+                id: room.id,
+                room_code: room.room_code,
+                title: room.title || 'Kuis Live Sosialisasi KKN',
+                category_name: room.category_name || 'Campuran',
+                status: room.status || 'finished',
+                total_questions: room.total_questions || 10,
+                total_players: playerCount,
+                created_at: room.created_at || new Date().toISOString(),
+                top_winner: topWinner,
+              };
+            })
+          );
+          return results;
+        }
+      } catch (e) {
+        console.warn('Error fetching recent QuRoom sessions:', e);
+      }
+    }
+
+    // Fallback mock recent room session if database is empty or unconfigured
+    return [
+      {
+        id: 'room-demo-1',
+        room_code: '849201',
+        title: 'Kuis Live Sosialisasi KKN Wedomartani',
+        category_name: 'Campuran',
+        status: 'finished',
+        total_questions: 10,
+        total_players: 8,
+        created_at: new Date().toISOString(),
+        top_winner: {
+          player_id: 'p-win-1',
+          player_name: 'Raihan Fadhlurrahman',
+          player_avatar: '/image/pp/1.png',
+          score: 1850,
+        },
+      },
+    ];
+  }
+
+  // Fetch full leaderboard & details for a specific QuRoom session
+  static async getQuRoomSessionDetails(roomId: string): Promise<{
+    session: any | null;
+    participants: any[];
+  }> {
+    let session: any = null;
+    let participants: any[] = [];
+
+    if (isSupabaseConfigured() && supabase) {
+      const activeClient = supabase;
+      try {
+        const { data: roomData } = await activeClient
+          .from('quiz_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .maybeSingle();
+
+        if (roomData) {
+          const { data: players } = await activeClient
+            .from('quiz_room_players')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('score', { ascending: false });
+
+          const rankedPlayers = (players || []).map((p: any, idx: number) => ({
+            ...p,
+            rank: idx + 1,
+          }));
+
+          session = {
+            id: roomData.id,
+            room_code: roomData.room_code,
+            title: roomData.title || 'Kuis Live Sosialisasi KKN',
+            category_name: roomData.category_name || 'Campuran',
+            status: roomData.status || 'finished',
+            total_questions: roomData.total_questions || 10,
+            total_players: rankedPlayers.length,
+            created_at: roomData.created_at || new Date().toISOString(),
+            top_winner: rankedPlayers.length > 0 ? {
+              player_id: rankedPlayers[0].player_id,
+              player_name: rankedPlayers[0].player_name,
+              player_avatar: rankedPlayers[0].player_avatar,
+              score: rankedPlayers[0].score,
+            } : undefined,
+          };
+
+          participants = rankedPlayers;
+        }
+      } catch (e) {
+        console.warn('Error fetching QuRoom session details:', e);
+      }
+    }
+
+    if (!session) {
+      // Mock fallback
+      session = {
+        id: roomId,
+        room_code: '849201',
+        title: 'Kuis Live Sosialisasi KKN Wedomartani',
+        category_name: 'Campuran',
+        status: 'finished',
+        total_questions: 10,
+        total_players: 3,
+        created_at: new Date().toISOString(),
+      };
+      participants = [
+        {
+          id: 'p1',
+          room_id: roomId,
+          player_id: 'p-win-1',
+          player_name: 'Raihan Fadhlurrahman',
+          player_avatar: '/image/pp/1.png',
+          border_frame: '/image/border/1.png',
+          bg_profile: '/image/bgprofile/1.jpg',
+          score: 1850,
+          correct_count: 9,
+          rank: 1,
+        },
+        {
+          id: 'p2',
+          room_id: roomId,
+          player_id: 'p-win-2',
+          player_name: 'Ahmad Zakaria',
+          player_avatar: '/image/pp/2.png',
+          border_frame: '/image/border/1.png',
+          bg_profile: '/image/bgprofile/1.jpg',
+          score: 1420,
+          correct_count: 7,
+          rank: 2,
+        },
+        {
+          id: 'p3',
+          room_id: roomId,
+          player_id: 'p-win-3',
+          player_name: 'Siti Nurhaliza',
+          player_avatar: '/image/pp/3.png',
+          border_frame: '/image/border/1.png',
+          bg_profile: '/image/bgprofile/1.jpg',
+          score: 1100,
+          correct_count: 5,
+          rank: 3,
+        },
+      ];
+    }
+
+    return { session, participants };
+  }
 }
