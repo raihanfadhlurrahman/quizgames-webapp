@@ -100,7 +100,8 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
   const handleCloseRoom = async () => {
     if (confirm('Apakah Anda yakin ingin mengakhiri sesi room kuis ini untuk semua peserta?')) {
       audioManager.playClick();
-      await RoomService.updateRoomStatus(room.id, 'finished');
+      setCurrentRoom((prev) => ({ ...prev, status: 'finished' }));
+      await RoomService.updateRoomStatus(room.id, 'finished', currentQIndex);
       onClose();
     }
   };

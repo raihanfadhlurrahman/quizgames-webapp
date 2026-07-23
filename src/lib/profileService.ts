@@ -35,7 +35,7 @@ export class ProfileService {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id) {
+        if (parsed && parsed.id && parsed.id.trim() !== '') {
           return parsed;
         }
       } catch {
@@ -43,8 +43,12 @@ export class ProfileService {
       }
     }
 
-    // Return an unauthenticated/guest empty profile structure
-    return this.createDefaultProfile('');
+    // Return an unauthenticated/guest profile structure with a persistent unique ID
+    const defaultProfile = this.createDefaultProfile('');
+    try {
+      localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(defaultProfile));
+    } catch {}
+    return defaultProfile;
   }
 
   // Check if session is authenticated and fetch profile from Supabase
@@ -225,8 +229,9 @@ export class ProfileService {
   }
 
   private static createDefaultProfile(id: string): UserProfileData {
+    const finalId = id && id.trim() !== '' ? id : `guest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     return {
-      id: id || '',
+      id: finalId,
       name: 'Raihan',
       avatar: DEFAULT_AVATAR,
       border_frame: '/image/border/1.png',

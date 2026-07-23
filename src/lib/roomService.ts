@@ -158,13 +158,18 @@ export class RoomService {
 
   // Player Leaves Room (Removes single player from room)
   static async leaveRoom(roomId: string, playerId: string): Promise<boolean> {
+    if (!roomId || !playerId) return true;
     if (isSupabaseConfigured() && supabase) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('quiz_room_players')
           .delete()
           .eq('room_id', roomId)
           .eq('player_id', playerId);
+
+        if (error) {
+          console.warn('Supabase player leave delete error:', error.message);
+        }
       } catch (e) {
         console.warn('Error leaving room in Supabase:', e);
       }

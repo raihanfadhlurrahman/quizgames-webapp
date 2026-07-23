@@ -419,20 +419,27 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
           </motion.div>
         )}
 
-        {/* FASE 4: FINISHED (PODIUM VICTORY) */}
+        {/* FASE 4: FINISHED (PODIUM VICTORY / ENDED) */}
         {room.status === 'finished' && (
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full space-y-6 text-center my-auto">
             <div className="space-y-2">
-              <div className="text-5xl animate-bounce">🏆</div>
-              <h2 className="text-2xl font-black gold-gradient-text">Kuis Room Selesai!</h2>
+              <div className="text-5xl animate-bounce">{answeredQIndex !== null ? '🏆' : '📢'}</div>
+              <h2 className="text-2xl font-black gold-gradient-text">
+                {answeredQIndex !== null ? 'Kuis Room Selesai!' : 'Sesi Kuis Diakhiri'}
+              </h2>
               <p className="text-xs text-slate-300 font-bold">
-                Anda meraih peringkat <strong className="text-amber-400">#{myRankIndex + 1}</strong> dengan total{' '}
-                <strong className="text-emerald-400">{myPlayerEntry?.score.toLocaleString('id-ID')} Poin Amal</strong>!
+                {answeredQIndex !== null
+                  ? `Anda meraih peringkat #${myRankIndex + 1} dengan total ${myPlayerEntry?.score.toLocaleString('id-ID')} Poin Amal!`
+                  : 'Sesi kuis telah diakhiri oleh Operator.'}
               </p>
             </div>
 
             <button
-              onClick={onReturnHome}
+              onClick={() => {
+                audioManager.playClick();
+                RoomService.leaveRoom(room.id, userProfile.id);
+                onReturnHome();
+              }}
               className="emerald-gradient-btn w-full py-3.5 rounded-2xl text-white font-extrabold text-sm shadow-xl cursor-pointer"
             >
               Kembali ke Beranda

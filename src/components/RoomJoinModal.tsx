@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { KeyRound, Users, X, Play, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { KeyRound, Users, X, Play, Sparkles, Loader2, AlertCircle, LogOut } from 'lucide-react';
 import { QuizRoom, QuizRoomPlayer } from '@/types/game';
 import { RoomService } from '@/lib/roomService';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
@@ -36,6 +36,16 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
     }
   }, [isOpen]);
 
+  const handleLeaveRoom = async () => {
+    if (joinedRoom) {
+      audioManager.playClick();
+      await RoomService.leaveRoom(joinedRoom.id, userProfile.id);
+      setJoinedRoom(null);
+      setPlayers([]);
+    }
+    onClose();
+  };
+
   // Subscribe to room realtime updates when player joins
   useEffect(() => {
     if (joinedRoom) {
@@ -43,7 +53,11 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
         joinedRoom.id,
         (updatedRoom) => {
           setJoinedRoom(updatedRoom);
-          if (updatedRoom.status !== 'waiting' && updatedRoom.status !== 'finished') {
+          if (updatedRoom.status === 'finished') {
+            setErrorMsg('Sesi room kuis telah diakhiri oleh Operator.');
+            setJoinedRoom(null);
+            setPlayers([]);
+          } else if (updatedRoom.status !== 'waiting') {
             audioManager.playClick();
             onJoinedAndStarted(updatedRoom, players);
           }
@@ -114,16 +128,28 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="border-4 border-[#FDE68A] max-w-md w-full rounded-[32px] p-6 bg-[#FFFDF3] text-[#1E293B] relative overflow-hidden shadow-2xl"
         >
-          {/* Header Action / Close */}
-          <button
-            onClick={() => {
-              audioManager.playClick();
-              onClose();
-            }}
-            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#B45309] hover:bg-amber-800 text-white flex items-center justify-center border-2 border-white shadow-md cursor-pointer z-10"
-          >
-            <X className="w-5 h-5 stroke-[3]" />
-          </button>
+          {/* Header Action / Close or Leave */}
+          {joinedRoom ? (
+            <button
+              onClick={handleLeaveRoom}
+              className="absolute top-4 right-4 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs flex items-center gap-1.5 border-2 border-white shadow-md cursor-pointer z-10 transition active:scale-95"
+              title="Keluar dari Room"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Keluar</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                audioManager.playClick();
+                onClose();
+              }}
+              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-[#B45309] hover:bg-amber-800 text-white flex items-center justify-center border-2 border-white shadow-md cursor-pointer z-10"
+              title="Tutup"
+            >
+              <X className="w-5 h-5 stroke-[3]" />
+            </button>
+          )}
 
           {!joinedRoom ? (
             /* PIN ENTRY FORM */
@@ -179,7 +205,7 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
             </div>
           ) : (
             /* WAITING LOBBY VIEW */
-            <div className="space-y-5 text-center py-2">
+            <div className="space-y-4 text-center py-2">
               <div className="bg-amber-100/90 border-2 border-amber-300 rounded-2xl p-3 inline-block shadow-sm">
                 <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest block">
                   KODE ROOM PIN
@@ -214,7 +240,7 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
                   </span>
                 </div>
 
-                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
                   {players.map((p) => {
                     const isSelf = p.player_id === userProfile.id;
                     return (
@@ -250,6 +276,15 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
                   })}
                 </div>
               </div>
+
+              {/* LEAVE ROOM BUTTON */}
+              <button
+                onClick={handleLeaveRoom}
+                className="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-700 font-extrabold text-xs rounded-2xl border border-red-300 cursor-pointer flex items-center justify-center gap-2 transition active:scale-95 shadow-sm mt-2"
+              >
+                <LogOut className="w-4 h-4 text-red-600" />
+                <span>Keluar dari Room Kuis</span>
+              </button>
             </div>
           )}
         </motion.div>
