@@ -8,6 +8,8 @@ import { RoomService } from '@/lib/roomService';
 import { GameService } from '@/lib/gameService';
 import { audioManager } from '@/lib/audioManager';
 
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
+
 interface RoomHostViewProps {
   room: QuizRoom;
   onClose: () => void;
@@ -24,7 +26,11 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
   useEffect(() => {
     // Fetch initial questions and players
     RoomService.getRoomPlayers(room.id).then(setPlayers);
-    GameService.getQuestions(room.category_name || 'Campuran', room.total_questions || 10, 'kahoot').then(setQuestions);
+    if (room.question_ids && room.question_ids.length > 0) {
+      GameService.getQuestionsByIds(room.question_ids).then(setQuestions);
+    } else {
+      GameService.getQuestions(room.category_name || 'Campuran', room.total_questions || 10, 'kahoot').then(setQuestions);
+    }
 
     // Subscribe to realtime room updates
     const unsubscribe = RoomService.subscribeToRoom(
@@ -38,8 +44,28 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
       }
     );
 
+    // Host Broadcast Channel for Syncing Manual Questions to Players
+    let broadcastChannel: any = null;
+    if (isSupabaseConfigured() && supabase) {
+      broadcastChannel = supabase.channel(`room_sync_${room.id}`);
+      broadcastChannel
+        .on('broadcast', { event: 'request_questions' }, () => {
+          if (room.question_ids && room.question_ids.length > 0) {
+            broadcastChannel.send({
+              type: 'broadcast',
+              event: 'provide_questions',
+              payload: { question_ids: room.question_ids },
+            });
+          }
+        })
+        .subscribe();
+    }
+
     return () => {
       unsubscribe();
+      if (broadcastChannel && supabase) {
+        supabase.removeChannel(broadcastChannel);
+      }
     };
   }, [room.id]);
 

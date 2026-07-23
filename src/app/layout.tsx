@@ -4,6 +4,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Islamic Millionaire - Belajar Islam Sambil Bermain',
   description: 'Mini web game edukasi berbasis Next.js untuk media sosialisasi interaktif KKN Wedomartani.',
+  icons: {
+    icon: '/image/logo.png',
+  },
 };
 
 export default function RootLayout({

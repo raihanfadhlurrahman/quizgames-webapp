@@ -14,9 +14,13 @@ export class RoomService {
     title: string,
     categoryName: string = 'Campuran',
     totalQuestions: number = 10,
-    createdBy?: string
+    createdBy?: string,
+    questionIds?: string[]
   ): Promise<QuizRoom | null> {
     const pin = this.generatePin();
+    
+    // If specific question IDs are provided, total_questions should match their count
+    const actualTotalQuestions = questionIds && questionIds.length > 0 ? questionIds.length : totalQuestions;
 
     if (isSupabaseConfigured() && supabase) {
       try {
@@ -27,7 +31,7 @@ export class RoomService {
               room_code: pin,
               title: title.trim() || 'Kuis Live Sosialisasi KKN',
               category_name: categoryName,
-              total_questions: totalQuestions,
+              total_questions: actualTotalQuestions,
               status: 'waiting',
               current_question_index: 0,
               created_by: createdBy || null,
@@ -37,7 +41,10 @@ export class RoomService {
           .single();
 
         if (!error && data) {
-          return data as QuizRoom;
+          const roomData = data as QuizRoom;
+          // We attach question_ids manually to the returned object so Host can cache it
+          if (questionIds) roomData.question_ids = questionIds;
+          return roomData;
         } else {
           console.error('Failed to create room in Supabase:', error);
         }
@@ -54,7 +61,8 @@ export class RoomService {
       category_name: categoryName,
       status: 'waiting',
       current_question_index: 0,
-      total_questions: totalQuestions,
+      total_questions: actualTotalQuestions,
+      question_ids: questionIds,
       created_by: createdBy,
       created_at: new Date().toISOString(),
     };
@@ -471,8 +479,8 @@ export class RoomService {
           .maybeSingle()
           .then(({ data }) => {
             if (data) {
-              const localCache = RoomService.getLocalRoomCache(roomId);
               const roomData = data as QuizRoom;
+              const localCache = RoomService.getLocalRoomCache(roomId);
               if (localCache && localCache.status && localCache.status !== 'waiting') {
                 roomData.status = localCache.status;
                 roomData.current_question_index = localCache.current_question_index ?? roomData.current_question_index;

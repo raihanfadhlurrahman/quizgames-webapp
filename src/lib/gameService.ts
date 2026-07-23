@@ -175,6 +175,44 @@ export class GameService {
     return shuffled.slice(0, count);
   }
 
+  // Fetch specific questions by IDs, preserving the order of the IDs
+  static async getQuestionsByIds(ids: string[]): Promise<Question[]> {
+    if (!ids || ids.length === 0) return [];
+    
+    let pool: Question[] = [];
+
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('*, categories(name)')
+          .in('id', ids);
+
+        if (!error && data && data.length > 0) {
+          pool = data.map((q: any) => ({
+            ...q,
+            category_name: q.categories?.name || 'Campuran',
+          }));
+        }
+      } catch (e) {
+        console.warn('Supabase fetch questions by ids failed:', e);
+      }
+    }
+
+    if (pool.length === 0) {
+      pool = INITIAL_QUESTIONS.filter((q) => ids.includes(q.id || ''));
+    }
+
+    // Sort the pool according to the order of `ids` array
+    const sorted = [...pool].sort((a, b) => {
+      const idxA = ids.indexOf(a.id || '');
+      const idxB = ids.indexOf(b.id || '');
+      return idxA - idxB;
+    });
+
+    return sorted;
+  }
+
   // Fetch ALL questions for Admin view (100% directly from Supabase DB, ordered by created_at DESC)
   static async getAllQuestionsAdmin(): Promise<Question[]> {
     let pool: Question[] = [];

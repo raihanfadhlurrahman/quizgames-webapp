@@ -41,7 +41,7 @@ export class ProfileService {
             parsed.id = this.generateUUID();
             try {
               localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(parsed));
-            } catch {}
+            } catch { }
           }
           return parsed;
         }
@@ -221,7 +221,7 @@ export class ProfileService {
     const newTotalQuestionsAnswered = current.total_questions_answered + totalQuestions;
 
     // Calculate Level: Every 500 XP = +1 Level
-    const newLevel = Math.floor(newAmalPoints / 500) + 1;
+    const newLevel = Math.floor(newAmalPoints / 5000) + 1;
 
     const updated: UserProfileData = {
       ...current,
@@ -244,7 +244,7 @@ export class ProfileService {
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(p));
-        } catch {}
+        } catch { }
       }
     }
     return p;

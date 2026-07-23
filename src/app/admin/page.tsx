@@ -26,6 +26,8 @@ export default function AdminPage() {
   const [isRoomFormOpen, setIsRoomFormOpen] = useState<boolean>(false);
   const [newRoomTitle, setNewRoomTitle] = useState<string>('Kuis Live Sosialisasi KKN');
   const [newRoomCategory, setNewRoomCategory] = useState<string>('Campuran');
+  const [roomQuestionSelectionMode, setRoomQuestionSelectionMode] = useState<'auto' | 'manual'>('auto');
+  const [roomSelectedQuestionIds, setRoomSelectedQuestionIds] = useState<string[]>([]);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -215,10 +217,16 @@ export default function AdminPage() {
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (roomQuestionSelectionMode === 'manual' && roomSelectedQuestionIds.length === 0) {
+      alert('Pilih setidaknya 1 soal untuk dimasukkan ke dalam sesi kuis!');
+      return;
+    }
     const created = await RoomService.createRoom(
       newRoomTitle || 'Kuis Live Sosialisasi KKN',
       newRoomCategory || 'Campuran',
-      10
+      10,
+      undefined,
+      roomQuestionSelectionMode === 'manual' ? roomSelectedQuestionIds : undefined
     );
     if (created) {
       setActiveHostRoom(created);
@@ -1016,6 +1024,61 @@ export default function AdminPage() {
                       <option value="Campuran">🌀 Campuran</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-2">Metode Pemilihan Soal</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                        <input type="radio" name="selectionMode" value="auto" checked={roomQuestionSelectionMode === 'auto'} onChange={() => setRoomQuestionSelectionMode('auto')} className="accent-amber-500" />
+                        Acak Otomatis (10 Soal)
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                        <input type="radio" name="selectionMode" value="manual" checked={roomQuestionSelectionMode === 'manual'} onChange={() => setRoomQuestionSelectionMode('manual')} className="accent-amber-500" />
+                        Pilih Manual
+                      </label>
+                    </div>
+                  </div>
+
+                  {roomQuestionSelectionMode === 'manual' && (
+                    <div className="border border-slate-700 rounded-xl p-3 bg-slate-900 max-h-60 overflow-y-auto">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-xs font-semibold text-amber-400">Pilih Soal ({roomSelectedQuestionIds.length} terpilih):</div>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const filteredIds = questions.filter(q => newRoomCategory === 'Campuran' || q.category_name === newRoomCategory).map(q => q.id || '');
+                            if (roomSelectedQuestionIds.length === filteredIds.length && filteredIds.length > 0) {
+                              setRoomSelectedQuestionIds([]);
+                            } else {
+                              setRoomSelectedQuestionIds(filteredIds);
+                            }
+                          }}
+                          className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-300 hover:text-white"
+                        >
+                          Pilih Semua / Batal
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {questions.filter(q => newRoomCategory === 'Campuran' || q.category_name === newRoomCategory).map(q => (
+                          <label key={q.id} className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer p-2 hover:bg-slate-800 rounded-lg transition">
+                            <input 
+                              type="checkbox" 
+                              className="mt-0.5 accent-amber-500 cursor-pointer"
+                              checked={roomSelectedQuestionIds.includes(q.id || '')}
+                              onChange={(e) => {
+                                if (e.target.checked) setRoomSelectedQuestionIds(prev => [...prev, q.id || '']);
+                                else setRoomSelectedQuestionIds(prev => prev.filter(id => id !== q.id));
+                              }}
+                            />
+                            <span>{q.question_text} <span className="text-slate-500 ml-1">({q.difficulty})</span></span>
+                          </label>
+                        ))}
+                        {questions.filter(q => newRoomCategory === 'Campuran' || q.category_name === newRoomCategory).length === 0 && (
+                          <div className="text-center text-slate-500 py-4 text-[10px]">Tidak ada soal untuk kategori ini.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-end gap-3 pt-2">
                     <button

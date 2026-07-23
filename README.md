@@ -14,6 +14,9 @@
     Aplikasi Web Kuis Edukatif Islami Modern dengan Mode <b>Who Wants to Be a Millionaire</b> (Solo) & <b>Quroom Live Realtime</b> (Multiplayer Event/Sosialisasi).
   </p>
 
+  <br />
+  <img src="image/preview.png" alt="Preview Aplikasi" width="100%" style="border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+
 </div>
 
 ---

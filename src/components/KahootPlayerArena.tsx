@@ -8,6 +8,7 @@ import { RoomService } from '@/lib/roomService';
 import { GameService } from '@/lib/gameService';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
 import { audioManager } from '@/lib/audioManager';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 interface KahootPlayerArenaProps {
   initialRoom: QuizRoom;
@@ -35,22 +36,9 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
 
   // Fetch questions & players on mount, then re-sync if room provides question_ids
   useEffect(() => {
+    let broadcastChannel: any = null;
+
     const loadQuestions = async () => {
-      const cached = RoomService.getLocalRoomCache(initialRoom.id);
-      const cachedIds = cached?.question_ids;
-
-      if (cachedIds && cachedIds.length > 0) {
-        // Load questions in operator's exact order from Supabase by IDs
-        const all = await GameService.getQuestions(initialRoom.category_name || 'Campuran', 100, 'kahoot');
-        const ordered = cachedIds
-          .map((id) => all.find((q) => q.id === id))
-          .filter(Boolean) as typeof all;
-        if (ordered.length > 0) {
-          setQuestions(ordered);
-          return;
-        }
-      }
-
       // Fallback: load deterministically (same sort as operator)
       const qs = await GameService.getQuestions(initialRoom.category_name || 'Campuran', initialRoom.total_questions || 10, 'kahoot');
       setQuestions(qs);
@@ -64,23 +52,39 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
       initialRoom.id,
       (updatedRoom) => {
         setRoom(updatedRoom);
-        // When room gains question_ids (operator started game), re-sync questions
-        if (updatedRoom.question_ids && updatedRoom.question_ids.length > 0) {
-          GameService.getQuestions(initialRoom.category_name || 'Campuran', 100, 'kahoot').then((all) => {
-            const ordered = (updatedRoom.question_ids as string[])
-              .map((id) => all.find((q) => q.id === id))
-              .filter(Boolean) as typeof all;
-            if (ordered.length > 0) setQuestions(ordered);
-          });
-        }
       },
       (updatedPlayers) => {
         setPlayers(updatedPlayers);
       }
     );
 
+    // Player Broadcast Channel for Syncing Manual Questions from Host
+    if (isSupabaseConfigured() && supabase) {
+      broadcastChannel = supabase.channel(`room_sync_${initialRoom.id}`);
+      broadcastChannel
+        .on('broadcast', { event: 'provide_questions' }, (payload: any) => {
+          if (payload.payload?.question_ids) {
+            GameService.getQuestionsByIds(payload.payload.question_ids).then((ordered) => {
+              if (ordered.length > 0) setQuestions(ordered);
+            });
+          }
+        })
+        .subscribe((status: string) => {
+          if (status === 'SUBSCRIBED') {
+            // As soon as we join the channel, ask the Host for questions
+            broadcastChannel.send({
+              type: 'broadcast',
+              event: 'request_questions',
+            });
+          }
+        });
+    }
+
     return () => {
       unsubscribe();
+      if (broadcastChannel && supabase) {
+        supabase.removeChannel(broadcastChannel);
+      }
     };
   }, [initialRoom.id]);
 
