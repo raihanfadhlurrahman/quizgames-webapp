@@ -29,7 +29,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('Global');
-  const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
+  const [userProfile, setUserProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
   const [currentUserBest, setCurrentUserBest] = useState<{
     rank: number;
     score: number;
@@ -116,6 +116,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setUserProfile(ProfileService.getProfileOrDefault());
       if (activeModeTab === 'MILLIONAIRE') {
         fetchMillionaireLeaderboard(selectedCategory);
       } else {

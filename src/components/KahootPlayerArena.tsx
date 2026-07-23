@@ -437,7 +437,9 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
             <button
               onClick={async () => {
                 audioManager.playClick();
-                await RoomService.leaveRoom(room.id, userProfile.id);
+                if (room.status === 'waiting') {
+                  await RoomService.leaveRoom(room.id, userProfile.id);
+                }
                 await ProfileService.fetchProfileFromServer();
                 onReturnHome();
               }}

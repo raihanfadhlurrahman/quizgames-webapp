@@ -24,7 +24,7 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [joinedRoom, setJoinedRoom] = useState<QuizRoom | null>(null);
   const [players, setPlayers] = useState<QuizRoomPlayer[]>([]);
-  const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
+  const [userProfile, setUserProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
 
   useEffect(() => {
     if (!isOpen) {
@@ -33,6 +33,8 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
       setJoinedRoom(null);
       setPlayers([]);
       setLoading(false);
+    } else {
+      setUserProfile(ProfileService.getProfileOrDefault());
     }
   }, [isOpen]);
 
@@ -103,8 +105,12 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
       return;
     }
 
-    // Join Room
-    await RoomService.joinRoom(room.id, userProfile);
+    // Always fetch latest fresh profile before joining room
+    const freshProfile = ProfileService.getProfileOrDefault();
+    setUserProfile(freshProfile);
+
+    // Join Room with fresh profile
+    await RoomService.joinRoom(room.id, freshProfile);
     const initialPlayers = await RoomService.getRoomPlayers(room.id);
 
     setJoinedRoom(room);

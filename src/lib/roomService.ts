@@ -82,37 +82,49 @@ export class RoomService {
   }
 
   // Player joins room with their profile
+  // Player joins room with their profile
   static async joinRoom(roomId: string, profile: UserProfileData): Promise<QuizRoomPlayer | null> {
+    // Retrieve fresh current profile from local cache/server to avoid using stale props
+    const currentCached = ProfileService.getProfile();
+    const activeProfile: UserProfileData = currentCached ? {
+      ...currentCached,
+      ...profile,
+      name: (profile.name && profile.name !== 'Pemain Baru') ? profile.name : currentCached.name,
+      avatar: profile.avatar || currentCached.avatar,
+      border_frame: profile.border_frame || currentCached.border_frame,
+      bg_profile: profile.bg_profile || currentCached.bg_profile,
+    } : profile;
+
     // Ensure player ID is a valid UUID
-    if (!profile.id || profile.id.startsWith('guest_')) {
-      profile.id = ProfileService.generateUUID();
+    if (!activeProfile.id || activeProfile.id.startsWith('guest_')) {
+      activeProfile.id = ProfileService.generateUUID();
     }
 
     if (isSupabaseConfigured() && supabase) {
       const activeClient = supabase;
       try {
         // 1. Ensure player profile exists in public.players table to satisfy foreign key constraint
-        await ProfileService.saveProfile(profile);
+        await ProfileService.saveProfile(activeProfile);
 
         // 2. Check if player is already in room
         const { data: existingPlayer } = await activeClient
           .from('quiz_room_players')
           .select('*')
           .eq('room_id', roomId)
-          .eq('player_id', profile.id)
+          .eq('player_id', activeProfile.id)
           .maybeSingle();
 
         if (existingPlayer) {
           const { data: updatedData } = await activeClient
             .from('quiz_room_players')
             .update({
-              player_name: profile.name,
-              player_avatar: profile.avatar || '/image/pp/1.png',
-              border_frame: profile.border_frame || profile.border_color || '/image/border/1.png',
-              bg_profile: profile.bg_profile || '/image/bgprofile/1.jpg',
+              player_name: activeProfile.name,
+              player_avatar: activeProfile.avatar || '/image/pp/1.png',
+              border_frame: activeProfile.border_frame || activeProfile.border_color || '/image/border/1.png',
+              bg_profile: activeProfile.bg_profile || '/image/bgprofile/1.jpg',
             })
             .eq('room_id', roomId)
-            .eq('player_id', profile.id)
+            .eq('player_id', activeProfile.id)
             .select()
             .single();
 
@@ -123,11 +135,11 @@ export class RoomService {
         // 3. Insert new player into room
         const payloadFull = {
           room_id: roomId,
-          player_id: profile.id,
-          player_name: profile.name,
-          player_avatar: profile.avatar || '/image/pp/1.png',
-          border_frame: profile.border_frame || profile.border_color || '/image/border/1.png',
-          bg_profile: profile.bg_profile || '/image/bgprofile/1.jpg',
+          player_id: activeProfile.id,
+          player_name: activeProfile.name,
+          player_avatar: activeProfile.avatar || '/image/pp/1.png',
+          border_frame: activeProfile.border_frame || activeProfile.border_color || '/image/border/1.png',
+          bg_profile: activeProfile.bg_profile || '/image/bgprofile/1.jpg',
           score: 0,
           correct_count: 0,
         };
@@ -159,11 +171,11 @@ export class RoomService {
     return {
       id: `rp-${Date.now()}`,
       room_id: roomId,
-      player_id: profile.id,
-      player_name: profile.name,
-      player_avatar: profile.avatar || '/image/pp/1.png',
-      border_frame: profile.border_frame || '/image/border/1.png',
-      bg_profile: profile.bg_profile || '/image/bgprofile/1.jpg',
+      player_id: activeProfile.id,
+      player_name: activeProfile.name,
+      player_avatar: activeProfile.avatar || '/image/pp/1.png',
+      border_frame: activeProfile.border_frame || '/image/border/1.png',
+      bg_profile: activeProfile.bg_profile || '/image/bgprofile/1.jpg',
       score: 0,
       correct_count: 0,
     };
@@ -191,11 +203,22 @@ export class RoomService {
     return [];
   }
 
-  // Player Leaves Room (Removes single player from room)
+  // Player Leaves Room (Removes player ONLY if room status is 'waiting')
   static async leaveRoom(roomId: string, playerId: string): Promise<boolean> {
     if (!roomId || !playerId) return true;
     if (isSupabaseConfigured() && supabase) {
       try {
+        // Do not delete player from room history if the game has started or finished!
+        const { data: roomData } = await supabase
+          .from('quiz_rooms')
+          .select('status')
+          .eq('id', roomId)
+          .maybeSingle();
+
+        if (roomData && roomData.status !== 'waiting') {
+          return true; // Preserve player score history for leaderboard
+        }
+
         const { error } = await supabase
           .from('quiz_room_players')
           .delete()
@@ -566,11 +589,31 @@ export class RoomService {
         if (!error && rooms && rooms.length > 0) {
           const results = await Promise.all(
             rooms.map(async (room: any) => {
-              const { data: players } = await activeClient
+              let { data: players } = await activeClient
                 .from('quiz_room_players')
                 .select('*')
                 .eq('room_id', room.id)
                 .order('score', { ascending: false });
+
+              // Fallback to game_sessions table if quiz_room_players is empty
+              if ((!players || players.length === 0) && room.title) {
+                const { data: gsData } = await activeClient
+                  .from('game_sessions')
+                  .select('*')
+                  .eq('event_tag', room.title)
+                  .eq('mode', 'QuRoom Live')
+                  .order('total_score', { ascending: false });
+
+                if (gsData && gsData.length > 0) {
+                  players = gsData.map((gs: any) => ({
+                    player_id: gs.player_id,
+                    player_name: gs.player_name,
+                    player_avatar: gs.player_avatar,
+                    score: gs.total_score,
+                    correct_count: gs.correct_answers,
+                  }));
+                }
+              }
 
               const playerCount = players ? players.length : 0;
               const topWinner = players && players.length > 0 ? {
@@ -639,11 +682,33 @@ export class RoomService {
           .maybeSingle();
 
         if (roomData) {
-          const { data: players } = await activeClient
+          let { data: players } = await activeClient
             .from('quiz_room_players')
             .select('*')
             .eq('room_id', roomId)
             .order('score', { ascending: false });
+
+          // Fallback to game_sessions if quiz_room_players is empty
+          if ((!players || players.length === 0) && roomData.title) {
+            const { data: gsData } = await activeClient
+              .from('game_sessions')
+              .select('*')
+              .eq('event_tag', roomData.title)
+              .eq('mode', 'QuRoom Live')
+              .order('total_score', { ascending: false });
+
+            if (gsData && gsData.length > 0) {
+              players = gsData.map((gs: any) => ({
+                id: gs.id,
+                room_id: roomId,
+                player_id: gs.player_id,
+                player_name: gs.player_name,
+                player_avatar: gs.player_avatar,
+                score: gs.total_score,
+                correct_count: gs.correct_answers,
+              }));
+            }
+          }
 
           const rankedPlayers = (players || []).map((p: any, idx: number) => ({
             ...p,

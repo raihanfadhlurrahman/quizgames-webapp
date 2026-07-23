@@ -92,6 +92,13 @@ export class ProfileService {
           id: userId,
           name: newProfile.name,
           avatar: newProfile.avatar,
+          border_frame: newProfile.border_frame || '/image/border/1.png',
+          border_color: newProfile.border_color || '/image/border/1.png',
+          bg_profile: newProfile.bg_profile || '/image/bgprofile/1.jpg',
+          title_tag: newProfile.title_tag || 'Muslim Cerdas',
+          bio_quote: newProfile.bio_quote || 'رَبِّ زِدْنِي عِلْمًا',
+          bio_translation: newProfile.bio_translation || '"Ya Tuhanku, tambahkanlah kepadaku ilmu."',
+          bio_reference: newProfile.bio_reference || '(QS. Taha: 114)',
           level: newProfile.level,
           xp: newProfile.xp,
           amal_points: newProfile.amal_points,
@@ -142,11 +149,17 @@ export class ProfileService {
   // Save/Update Profile
   static async saveProfile(profile: Partial<UserProfileData>): Promise<UserProfileData> {
     const current = this.getProfile() || this.createDefaultProfile('');
+    const finalId = (profile.id && !profile.id.startsWith('guest_')) ? profile.id : current.id;
     const updated: UserProfileData = {
       ...current,
       ...profile,
+      id: finalId,
       name: profile.name?.trim() || current.name || 'Pemain Baru',
       avatar: profile.avatar || current.avatar || DEFAULT_AVATAR,
+      border_frame: profile.border_frame || current.border_frame || '/image/border/1.png',
+      border_color: profile.border_color || profile.border_frame || current.border_color || '/image/border/1.png',
+      bg_profile: profile.bg_profile || current.bg_profile || '/image/bgprofile/1.jpg',
+      title_tag: profile.title_tag || current.title_tag || 'Muslim Cerdas',
     };
 
     if (typeof window !== 'undefined') {
