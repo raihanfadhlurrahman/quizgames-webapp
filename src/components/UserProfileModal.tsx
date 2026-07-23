@@ -185,9 +185,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const totalQuestions = profile.total_questions_answered ?? 0;
   const totalCorrect = profile.total_correct ?? 0;
   const accuracyPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-  const currentXP = profile.amal_points % 500;
-  const maxXP = 500;
-  const xpPercentage = Math.min((currentXP / maxXP) * 100, 100);
+  const levelInfo = ProfileService.calculateLevelInfo(profile.amal_points);
+  const currentXP = levelInfo.currentLevelPoints;
+  const maxXP = levelInfo.nextLevelPoints;
+  const xpPercentage = levelInfo.progressPercent;
 
   return (
     <AnimatePresence>
@@ -413,7 +414,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="bg-[#FBBF24] text-[#78350F] text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
                     <Star className="w-3 h-3 fill-current text-[#78350F]" />
-                    Lv. {profile.level}
+                    Lv. {levelInfo.level}
                   </span>
                   <span className="text-[10px] sm:text-xs font-bold text-slate-700">
                     {currentXP} / {maxXP} XP

@@ -198,7 +198,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
               </span>
               <span className="bg-[#FBBF24] text-[#78350F] text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
                 <Star className="w-3 h-3 fill-current" />
-                Lv. {userProfile.level}
+                Lv. {ProfileService.calculateLevelInfo(userProfile.amal_points + totalScore).level}
               </span>
             </div>
             {userProfile.title_tag && (
@@ -209,7 +209,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
             <div className="w-20 md:w-28 bg-slate-700 h-1.5 rounded-full overflow-hidden border border-slate-600">
               <div
                 className="bg-[#10B981] h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(((userProfile.amal_points % 500) / 500) * 100, 100)}%` }}
+                style={{ width: `${ProfileService.calculateLevelInfo(userProfile.amal_points + totalScore).progressPercent}%` }}
               />
             </div>
             <div className="flex items-center gap-1 text-[11px] md:text-xs font-bold text-[#34D399]">

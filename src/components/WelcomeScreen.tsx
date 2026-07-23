@@ -153,7 +153,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </span>
                 <span className="bg-[#FBBF24] text-[#78350F] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
                   <Star className="w-3 h-3 fill-current" />
-                  Lv. {profile.level}
+                  Lv. {ProfileService.calculateLevelInfo(profile.amal_points).level}
                 </span>
               </div>
 
@@ -161,7 +161,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div className="w-28 md:w-36 bg-[#E2E8F0] h-2 rounded-full overflow-hidden border border-[#CBD5E1]">
                 <div
                   className="bg-[#10B981] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(((profile.amal_points % 500) / 500) * 100, 100)}%` }}
+                  style={{ width: `${ProfileService.calculateLevelInfo(profile.amal_points).progressPercent}%` }}
                 />
               </div>
 

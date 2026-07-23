@@ -381,7 +381,7 @@ export class RoomService {
               const newGames = oldGames + 1;
               const newCorrect = oldCorrect + correctCount;
               const newTotalQ = oldTotalQ + totalQuestions;
-              const newLevel = Math.floor(newAmal / 500) + 1;
+              const { level: newLevel } = ProfileService.calculateLevelInfo(newAmal);
 
               await activeClient.from('players').update({
                 name: p.player_name || curPlayer.name,

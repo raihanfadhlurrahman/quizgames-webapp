@@ -211,6 +211,28 @@ export class ProfileService {
     return updated;
   }
 
+  // Helper: Calculate Level & Progress dynamically
+  static calculateLevelInfo(totalPoints: number) {
+    let level = 1;
+    let pointsNeeded = 5000;
+    let remainingPoints = totalPoints;
+
+    while (remainingPoints >= pointsNeeded) {
+      remainingPoints -= pointsNeeded;
+      level++;
+      pointsNeeded += 2500;
+    }
+
+    const progressPercent = Math.min((remainingPoints / pointsNeeded) * 100, 100);
+
+    return {
+      level,
+      currentLevelPoints: remainingPoints,
+      nextLevelPoints: pointsNeeded,
+      progressPercent
+    };
+  }
+
   // Accumulate Score & XP After Match
   static async addGameResults(score: number, correctCount: number = 0, totalQuestions: number = 15): Promise<UserProfileData> {
     const current = this.getProfile() || this.createDefaultProfile('');
@@ -220,8 +242,7 @@ export class ProfileService {
     const newTotalCorrect = current.total_correct + correctCount;
     const newTotalQuestionsAnswered = current.total_questions_answered + totalQuestions;
 
-    // Calculate Level: Every 500 XP = +1 Level
-    const newLevel = Math.floor(newAmalPoints / 5000) + 1;
+    const { level: newLevel } = this.calculateLevelInfo(newAmalPoints);
 
     const updated: UserProfileData = {
       ...current,
