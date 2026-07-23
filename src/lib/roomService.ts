@@ -382,26 +382,44 @@ export class RoomService {
     isCorrect: boolean
   ) {
     if (isSupabaseConfigured() && supabase) {
+      const activeClient = supabase;
       try {
-        // Fetch current score
-        const { data: cur } = await supabase
+        // Fetch current score by player_id
+        let { data: cur } = await activeClient
           .from('quiz_room_players')
-          .select('score, correct_count')
+          .select('id, score, correct_count, player_name')
           .eq('room_id', roomId)
           .eq('player_id', playerId)
-          .single();
+          .maybeSingle();
 
-        const oldScore = cur?.score || 0;
-        const oldCorrect = cur?.correct_count || 0;
+        // Fallback: If not found by player_id, try matching by player_name for current user profile
+        if (!cur) {
+          const profile = ProfileService.getProfile();
+          if (profile && profile.name) {
+            const { data: fallbackCur } = await activeClient
+              .from('quiz_room_players')
+              .select('id, score, correct_count, player_name')
+              .eq('room_id', roomId)
+              .eq('player_name', profile.name)
+              .maybeSingle();
+            if (fallbackCur) {
+              cur = fallbackCur;
+            }
+          }
+        }
 
-        await supabase
-          .from('quiz_room_players')
-          .update({
-            score: oldScore + scoreAdd,
-            correct_count: oldCorrect + (isCorrect ? 1 : 0),
-          })
-          .eq('room_id', roomId)
-          .eq('player_id', playerId);
+        if (cur) {
+          const oldScore = cur.score || 0;
+          const oldCorrect = cur.correct_count || 0;
+
+          await activeClient
+            .from('quiz_room_players')
+            .update({
+              score: oldScore + scoreAdd,
+              correct_count: oldCorrect + (isCorrect ? 1 : 0),
+            })
+            .eq('id', cur.id);
+        }
       } catch (e) {
         console.warn('Error submitting room score:', e);
       }

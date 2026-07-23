@@ -36,6 +36,13 @@ export class ProfileService {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.id && parsed.id.trim() !== '') {
+          // Migration check: if old guest_ ID exists, sanitize to UUID v4 and persist
+          if (parsed.id.startsWith('guest_')) {
+            parsed.id = this.generateUUID();
+            try {
+              localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(parsed));
+            } catch {}
+          }
           return parsed;
         }
       } catch {
@@ -218,7 +225,16 @@ export class ProfileService {
 
   // Get Current Profile or Default fallback
   static getProfileOrDefault(): UserProfileData {
-    return this.getProfile() || this.createDefaultProfile('');
+    let p = this.getProfile();
+    if (!p) {
+      p = this.createDefaultProfile('');
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(p));
+        } catch {}
+      }
+    }
+    return p;
   }
 
   // Clear session locally
