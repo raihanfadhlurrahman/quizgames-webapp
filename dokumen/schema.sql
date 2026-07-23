@@ -322,5 +322,18 @@ UPDATE public.quiz_rooms SET status = 'waiting' WHERE status NOT IN ('waiting', 
 ALTER TABLE public.quiz_rooms DROP CONSTRAINT IF EXISTS quiz_rooms_status_check;
 ALTER TABLE public.quiz_rooms ADD CONSTRAINT quiz_rooms_status_check CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress'));
 
+-- Fix quiz_room_players permissions & unique constraint safely:
+ALTER TABLE public.quiz_room_players DROP CONSTRAINT IF EXISTS quiz_room_players_player_id_fkey;
+ALTER TABLE public.players DROP CONSTRAINT IF EXISTS players_id_fkey;
+ALTER TABLE public.quiz_room_players ADD COLUMN IF NOT EXISTS bg_profile VARCHAR(255);
+
+ALTER TABLE public.quiz_room_players DROP CONSTRAINT IF EXISTS quiz_room_players_room_player_unique;
+ALTER TABLE public.quiz_room_players ADD CONSTRAINT quiz_room_players_room_player_unique UNIQUE (room_id, player_id);
+
+ALTER TABLE public.quiz_room_players ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow anon all on quiz_room_players" ON public.quiz_room_players;
+CREATE POLICY "Allow anon all on quiz_room_players" ON public.quiz_room_players FOR ALL USING (true) WITH CHECK (true);
+
+
 
 

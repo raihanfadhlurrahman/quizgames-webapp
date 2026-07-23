@@ -83,11 +83,44 @@ export class RoomService {
 
   // Player joins room with their profile
   static async joinRoom(roomId: string, profile: UserProfileData): Promise<QuizRoomPlayer | null> {
+    // Ensure player ID is a valid UUID
+    if (!profile.id || profile.id.startsWith('guest_')) {
+      profile.id = ProfileService.generateUUID();
+    }
+
     if (isSupabaseConfigured() && supabase) {
+      const activeClient = supabase;
       try {
-        // First ensure player profile exists in public.players table to satisfy foreign key constraint
+        // 1. Ensure player profile exists in public.players table to satisfy foreign key constraint
         await ProfileService.saveProfile(profile);
 
+        // 2. Check if player is already in room
+        const { data: existingPlayer } = await activeClient
+          .from('quiz_room_players')
+          .select('*')
+          .eq('room_id', roomId)
+          .eq('player_id', profile.id)
+          .maybeSingle();
+
+        if (existingPlayer) {
+          const { data: updatedData } = await activeClient
+            .from('quiz_room_players')
+            .update({
+              player_name: profile.name,
+              player_avatar: profile.avatar || '/image/pp/1.png',
+              border_frame: profile.border_frame || profile.border_color || '/image/border/1.png',
+              bg_profile: profile.bg_profile || '/image/bgprofile/1.jpg',
+            })
+            .eq('room_id', roomId)
+            .eq('player_id', profile.id)
+            .select()
+            .single();
+
+          if (updatedData) return updatedData as QuizRoomPlayer;
+          return existingPlayer as QuizRoomPlayer;
+        }
+
+        // 3. Insert new player into room
         const payloadFull = {
           room_id: roomId,
           player_id: profile.id,
@@ -99,21 +132,20 @@ export class RoomService {
           correct_count: 0,
         };
 
-        const { data, error } = await supabase
+        const { data: insertedData, error: insertError } = await activeClient
           .from('quiz_room_players')
-          .upsert([payloadFull], { onConflict: 'room_id,player_id' })
+          .insert([payloadFull])
           .select()
           .single();
 
-        if (!error && data) return data as QuizRoomPlayer;
+        if (!insertError && insertedData) return insertedData as QuizRoomPlayer;
 
-        // If error occurred (e.g. bg_profile column missing in DB), retry without bg_profile
-        if (error) {
-          console.warn('Retrying joinRoom without bg_profile:', error.message);
+        if (insertError) {
+          console.warn('Retrying joinRoom without bg_profile:', insertError.message);
           const { bg_profile, ...payloadWithoutBg } = payloadFull;
-          const { data: dataFallback, error: errFallback } = await supabase
+          const { data: dataFallback, error: errFallback } = await activeClient
             .from('quiz_room_players')
-            .upsert([payloadWithoutBg], { onConflict: 'room_id,player_id' })
+            .insert([payloadWithoutBg])
             .select()
             .single();
 
@@ -140,15 +172,18 @@ export class RoomService {
   // Fetch list of joined players in room
   static async getRoomPlayers(roomId: string): Promise<QuizRoomPlayer[]> {
     if (isSupabaseConfigured() && supabase) {
+      const activeClient = supabase;
       try {
-        const { data, error } = await supabase
+        const { data, error } = await activeClient
           .from('quiz_room_players')
           .select('*')
           .eq('room_id', roomId)
-          .order('score', { ascending: false })
-          .order('joined_at', { ascending: true });
+          .order('score', { ascending: false });
 
         if (!error && data) return data as QuizRoomPlayer[];
+        if (error) {
+          console.warn('Error fetching room players from Supabase:', error.message);
+        }
       } catch (e) {
         console.warn('Error getting room players:', e);
       }

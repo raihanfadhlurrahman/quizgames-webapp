@@ -228,8 +228,20 @@ export class ProfileService {
     }
   }
 
+  static generateUUID(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   static createDefaultProfile(id: string = ''): UserProfileData {
-    const finalId = id && id.trim() !== '' ? id : `guest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const isIdValid = id && id.trim() !== '' && !id.startsWith('guest_');
+    const finalId = isIdValid ? id : this.generateUUID();
     return {
       id: finalId,
       name: 'Pemain Baru',
