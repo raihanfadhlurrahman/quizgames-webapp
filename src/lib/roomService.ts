@@ -248,6 +248,10 @@ export class RoomService {
   ): Promise<boolean> {
     this.setLocalRoomCache(roomId, status, questionIndex, questionIds);
 
+    if (status === 'finished') {
+      this.finalizeQuRoomSession(roomId);
+    }
+
     if (isSupabaseConfigured() && supabase) {
       try {
         const updates: any = {
@@ -278,6 +282,93 @@ export class RoomService {
         return !error;
       } catch (e) {
         console.error('Error updating room status:', e);
+      }
+    }
+    return true;
+  }
+
+  // Finalize QuRoom session & sync scores to players table & game_sessions table
+  static async finalizeQuRoomSession(roomId: string): Promise<boolean> {
+    if (isSupabaseConfigured() && supabase) {
+      const activeClient = supabase;
+      try {
+        // Fetch room info
+        const { data: roomData } = await activeClient
+          .from('quiz_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .maybeSingle();
+
+        const roomTitle = roomData?.title || 'Kuis Live Sosialisasi KKN';
+        const categoryName = roomData?.category_name || 'Campuran';
+        const totalQuestions = roomData?.total_questions || 10;
+
+        // Fetch all joined players in room
+        const { data: players } = await activeClient
+          .from('quiz_room_players')
+          .select('*')
+          .eq('room_id', roomId);
+
+        if (players && players.length > 0) {
+          for (const p of players) {
+            if (!p.player_id) continue;
+
+            const scoreAdd = p.score || 0;
+            const correctCount = p.correct_count || 0;
+
+            // 1. Record into game_sessions table
+            await activeClient.from('game_sessions').insert([{
+              player_id: p.player_id,
+              player_name: p.player_name,
+              player_avatar: p.player_avatar,
+              category_name: categoryName,
+              mode: 'QuRoom Live',
+              total_questions: totalQuestions,
+              correct_answers: correctCount,
+              wrong_answers: Math.max(0, totalQuestions - correctCount),
+              total_score: scoreAdd,
+              duration_seconds: 120,
+              event_tag: roomTitle,
+            }]);
+
+            // 2. Fetch current player record from public.players table to accumulate Amal points & XP
+            const { data: curPlayer } = await activeClient
+              .from('players')
+              .select('*')
+              .eq('id', p.player_id)
+              .maybeSingle();
+
+            if (curPlayer) {
+              const oldAmal = curPlayer.amal_points || 0;
+              const oldXP = curPlayer.xp || 0;
+              const oldGames = curPlayer.total_games || 0;
+              const oldCorrect = curPlayer.total_correct || 0;
+              const oldTotalQ = curPlayer.total_questions_answered || 0;
+
+              const newAmal = oldAmal + scoreAdd;
+              const newXP = oldXP + scoreAdd;
+              const newGames = oldGames + 1;
+              const newCorrect = oldCorrect + correctCount;
+              const newTotalQ = oldTotalQ + totalQuestions;
+              const newLevel = Math.floor(newAmal / 500) + 1;
+
+              await activeClient.from('players').update({
+                name: p.player_name || curPlayer.name,
+                avatar: p.player_avatar || curPlayer.avatar,
+                amal_points: newAmal,
+                xp: newXP,
+                total_games: newGames,
+                total_correct: newCorrect,
+                total_questions_answered: newTotalQ,
+                level: newLevel,
+                updated_at: new Date().toISOString(),
+              }).eq('id', p.player_id);
+            }
+          }
+        }
+        return true;
+      } catch (e) {
+        console.warn('Error finalizing QuRoom session:', e);
       }
     }
     return true;

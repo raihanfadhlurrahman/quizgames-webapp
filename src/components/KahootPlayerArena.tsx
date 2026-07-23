@@ -435,9 +435,10 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
             </div>
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 audioManager.playClick();
-                RoomService.leaveRoom(room.id, userProfile.id);
+                await RoomService.leaveRoom(room.id, userProfile.id);
+                await ProfileService.fetchProfileFromServer();
                 onReturnHome();
               }}
               className="emerald-gradient-btn w-full py-3.5 rounded-2xl text-white font-extrabold text-sm shadow-xl cursor-pointer"
