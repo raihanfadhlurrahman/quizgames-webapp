@@ -353,49 +353,66 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
             </div>
 
             {/* TOP PLAYERS STANDING GRID */}
-            <div className="glass-card p-6 rounded-3xl border border-slate-700 shadow-2xl space-y-3">
-              {sortedPlayers.slice(0, 5).map((p, idx) => (
-                <div
-                  key={p.id || p.player_id}
-                  className={`flex items-center justify-between p-3.5 rounded-2xl border text-sm font-bold transition ${
-                    idx === 0
-                      ? 'bg-amber-500/20 border-amber-400 text-amber-300'
-                      : idx === 1
-                      ? 'bg-slate-700/80 border-slate-500 text-slate-200'
-                      : idx === 2
-                      ? 'bg-orange-950/60 border-orange-600 text-orange-200'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-8 text-center font-black text-lg">
-                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                    </span>
+            <div className="glass-card p-6 rounded-3xl border border-slate-700 shadow-2xl space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+              {sortedPlayers.map((p, idx) => {
+                const totalQ = currentQIndex + 1;
+                const correctCount = p.correct_count || 0;
+                const wrongCount = Math.max(0, totalQ - correctCount);
+                const accuracy = totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0;
 
-                    {/* Avatar with Border Overlay */}
-                    <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
-                      <div className="w-[78%] h-[78%] rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-600">
-                        {p.player_avatar && p.player_avatar.startsWith('/') ? (
-                          <img src={p.player_avatar} alt={p.player_name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xl">{p.player_avatar || '👦🏻'}</span>
-                        )}
+                return (
+                  <div
+                    key={p.id || p.player_id}
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border text-sm font-bold transition ${
+                      idx === 0
+                        ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                        : idx === 1
+                        ? 'bg-slate-700/80 border-slate-500 text-slate-200'
+                        : idx === 2
+                        ? 'bg-orange-950/60 border-orange-600 text-orange-200'
+                        : 'bg-slate-900/80 border-slate-800 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-8 text-center font-black text-lg flex-shrink-0">
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                      </span>
+
+                      {/* Avatar with Border Overlay */}
+                      <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        <div className="w-[78%] h-[78%] rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-600">
+                          {p.player_avatar && p.player_avatar.startsWith('/') ? (
+                            <img src={p.player_avatar} alt={p.player_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xl">{p.player_avatar || '👦🏻'}</span>
+                          )}
+                        </div>
+                        <img
+                          src={p.border_frame || '/image/border/1.png'}
+                          alt="Bingkai"
+                          className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-105"
+                        />
                       </div>
-                      <img
-                        src={p.border_frame || '/image/border/1.png'}
-                        alt="Bingkai"
-                        className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-105"
-                      />
+
+                      <div className="min-w-0">
+                        <span className="truncate font-extrabold text-base text-white block">{p.player_name}</span>
+                        <div className="flex items-center gap-2 text-xs opacity-90 font-medium">
+                          <span className="text-emerald-400 font-bold">✅ {correctCount} Benar</span>
+                          <span className="text-red-400 font-bold">❌ {wrongCount} Salah</span>
+                          <span className="text-sky-300 font-bold">🎯 {accuracy}%</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <span className="truncate font-extrabold text-base text-white">{p.player_name}</span>
+                    <div className="text-right flex-shrink-0 pl-2">
+                      <span className="font-black text-amber-300 text-base block">
+                        {p.score.toLocaleString('id-ID')} Pt
+                      </span>
+                      <span className="text-xs text-slate-400 font-semibold block">Poin Amal</span>
+                    </div>
                   </div>
-
-                  <span className="font-black text-amber-300 text-base flex-shrink-0">
-                    {p.score.toLocaleString('id-ID')} Pt
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* OPERATOR BUTTON FOR NEXT QUESTION */}
@@ -441,8 +458,13 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                   <span className="font-extrabold text-xs text-slate-200 truncate max-w-[100px]">
                     {sortedPlayers[1].player_name}
                   </span>
-                  <div className="w-full bg-gradient-to-t from-slate-700 to-slate-600 rounded-t-2xl py-6 text-center font-black text-slate-200 text-sm border-t-2 border-slate-400">
-                    {sortedPlayers[1].score.toLocaleString('id-ID')} Pt
+                  <div className="w-full bg-gradient-to-t from-slate-700 to-slate-600 rounded-t-2xl py-4 text-center border-t-2 border-slate-400 space-y-0.5">
+                    <div className="font-black text-slate-200 text-sm">
+                      {sortedPlayers[1].score.toLocaleString('id-ID')} Pt
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-300">
+                      ✅ {sortedPlayers[1].correct_count || 0}B • 🎯 {currentRoom.total_questions || questions.length ? Math.round(((sortedPlayers[1].correct_count || 0) / (currentRoom.total_questions || questions.length)) * 100) : 0}%
+                    </div>
                   </div>
                 </div>
               )}
@@ -464,8 +486,13 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                   <span className="font-black text-sm text-gold-400 truncate max-w-[120px]">
                     {sortedPlayers[0].player_name}
                   </span>
-                  <div className="w-full bg-gradient-to-t from-amber-600 to-yellow-500 rounded-t-2xl py-10 text-center font-black text-white text-base border-t-4 border-amber-300 shadow-2xl">
-                    {sortedPlayers[0].score.toLocaleString('id-ID')} Pt
+                  <div className="w-full bg-gradient-to-t from-amber-600 to-yellow-500 rounded-t-2xl py-8 text-center border-t-4 border-amber-300 shadow-2xl space-y-0.5">
+                    <div className="font-black text-white text-base">
+                      {sortedPlayers[0].score.toLocaleString('id-ID')} Pt
+                    </div>
+                    <div className="text-[10.5px] font-black text-amber-100">
+                      ✅ {sortedPlayers[0].correct_count || 0}B • 🎯 {currentRoom.total_questions || questions.length ? Math.round(((sortedPlayers[0].correct_count || 0) / (currentRoom.total_questions || questions.length)) * 100) : 0}%
+                    </div>
                   </div>
                 </div>
               )}
@@ -487,11 +514,91 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                   <span className="font-extrabold text-xs text-amber-200 truncate max-w-[100px]">
                     {sortedPlayers[2].player_name}
                   </span>
-                  <div className="w-full bg-gradient-to-t from-amber-900 to-amber-800 rounded-t-2xl py-4 text-center font-black text-amber-300 text-xs border-t-2 border-amber-700">
-                    {sortedPlayers[2].score.toLocaleString('id-ID')} Pt
+                  <div className="w-full bg-gradient-to-t from-amber-900 to-amber-800 rounded-t-2xl py-3 text-center border-t-2 border-amber-700 space-y-0.5">
+                    <div className="font-black text-amber-300 text-xs">
+                      {sortedPlayers[2].score.toLocaleString('id-ID')} Pt
+                    </div>
+                    <div className="text-[9.5px] font-bold text-amber-200">
+                      ✅ {sortedPlayers[2].correct_count || 0}B • 🎯 {currentRoom.total_questions || questions.length ? Math.round(((sortedPlayers[2].correct_count || 0) / (currentRoom.total_questions || questions.length)) * 100) : 0}%
+                    </div>
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* FULL PARTICIPANTS REKAP STANDING TABLE FOR HOST */}
+            <div className="space-y-2 text-left pt-2">
+              <div className="flex items-center justify-between text-xs font-black text-slate-300 px-1">
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <span>Daftar Peringkat Seluruh Peserta ({sortedPlayers.length})</span>
+                </span>
+                <span className="text-slate-400 font-normal">Scoreboard Live</span>
+              </div>
+
+              <div className="glass-card p-4 rounded-3xl border border-slate-700 shadow-2xl space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                {sortedPlayers.map((p, idx) => {
+                  const totalQ = currentRoom.total_questions || questions.length || 10;
+                  const correctCount = p.correct_count || 0;
+                  const wrongCount = Math.max(0, totalQ - correctCount);
+                  const accuracy = totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0;
+
+                  return (
+                    <div
+                      key={p.id || p.player_id}
+                      className={`flex items-center justify-between p-3 rounded-2xl border text-xs font-bold transition ${
+                        idx === 0
+                          ? 'bg-amber-500/20 border-amber-400 text-amber-300'
+                          : idx === 1
+                          ? 'bg-slate-700/80 border-slate-500 text-slate-200'
+                          : idx === 2
+                          ? 'bg-orange-950/60 border-orange-600 text-orange-200'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-6 text-center font-black text-sm flex-shrink-0">
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                        </span>
+
+                        {/* Avatar with Border Overlay */}
+                        <div className="relative w-8 h-8 flex items-center justify-center flex-shrink-0">
+                          <div className="w-[78%] h-[78%] rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-600">
+                            {p.player_avatar && p.player_avatar.startsWith('/') ? (
+                              <img src={p.player_avatar} alt={p.player_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-base">{p.player_avatar || '👦🏻'}</span>
+                            )}
+                          </div>
+                          <img
+                            src={p.border_frame || '/image/border/1.png'}
+                            alt="Bingkai"
+                            className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-105"
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <span className="truncate font-extrabold text-sm text-white block">{p.player_name}</span>
+                          <div className="flex items-center gap-2 text-[10.5px] opacity-90 mt-0.5 font-medium">
+                            <span className="text-emerald-400 font-bold">✅ {correctCount} Benar</span>
+                            <span className="text-red-400 font-bold">❌ {wrongCount} Salah</span>
+                            <span className="text-sky-300 font-bold">🎯 {accuracy}% Akurasi</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right flex-shrink-0 pl-2">
+                        <span className="font-black text-amber-300 text-sm md:text-base block leading-tight">
+                          {p.score.toLocaleString('id-ID')} Pt
+                        </span>
+                        <span className="text-[9.5px] text-amber-400/90 font-bold uppercase block">
+                          Poin Amal Akhir
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <button
