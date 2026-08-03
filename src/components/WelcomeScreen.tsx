@@ -214,12 +214,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               scale: { duration: 0.5 },
               y: { repeat: Infinity, duration: 3.5, ease: 'easeInOut' },
             }}
-            className="relative pb-0.5 flex justify-start animate-floating-logo"
+            className="relative pb-0.5 flex justify-center animate-floating-logo"
           >
             <img
               src="/image/logo.png"
               alt="Islamic Millionaire Logo"
-              className="w-full max-w-[260px] sm:max-w-[300px] md:max-w-[340px] lg:max-w-[370px] h-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)] pointer-events-none"
+              className="w-full h-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)] pointer-events-none"
             />
           </motion.div>
 

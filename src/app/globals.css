@@ -37,6 +37,7 @@ body {
   box-shadow: 0 6px 0 #166534 !important;
   color: #FFFFFF !important;
 }
+
 .green-btn-3d:hover {
   box-shadow: 0 3px 0 #166534 !important;
 }
@@ -47,6 +48,7 @@ body {
   box-shadow: 0 5px 0 #D97706 !important;
   color: #78350F !important;
 }
+
 .cream-btn-3d:hover {
   box-shadow: 0 2px 0 #D97706 !important;
 }
@@ -69,6 +71,7 @@ body {
 .gold-gradient-text {
   background: linear-gradient(135deg, #FDE68A 0%, #FBBF24 50%, #D97706 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -85,9 +88,12 @@ body {
 
 /* Pulsing Glow Animation */
 @keyframes pulseGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
   }
+
   50% {
     box-shadow: 0 0 30px rgba(251, 191, 36, 0.8);
   }
@@ -101,13 +107,16 @@ body {
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: #0B132B;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #1C2541;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #10B981;
 }
