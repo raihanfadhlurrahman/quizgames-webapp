@@ -7,6 +7,7 @@ import { Category, PlayerProfile } from '@/types/game';
 import { GameService } from '@/lib/gameService';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
 import { audioManager } from '@/lib/audioManager';
+import { getThemeConfig } from '@/lib/themeConfig';
 
 interface SetupScreenProps {
   onGameSetupComplete: (profile: PlayerProfile) => void;
@@ -17,11 +18,17 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
   const [profile, setProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
   const [selectedCategory, setSelectedCategory] = useState<string>('Campuran');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [activeThemeTab, setActiveThemeTab] = useState<'all' | 'islamic' | 'independence' | 'culture'>('all');
 
   useEffect(() => {
     const activeProf = ProfileService.getProfileOrDefault();
     setProfile(activeProf);
     GameService.getCategories().then(setCategories);
+    // Sync default active theme tab from saved theme
+    const savedTheme = localStorage.getItem('app_theme');
+    if (savedTheme === 'independence' || savedTheme === 'culture' || savedTheme === 'islamic') {
+      setActiveThemeTab(savedTheme as any);
+    }
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,11 +42,20 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
     });
   };
 
+  const filteredCategories = categories.filter((cat) => {
+    if (activeThemeTab === 'all') return true;
+    if (cat.theme_id) return cat.theme_id === activeThemeTab;
+    return activeThemeTab === 'islamic'; // Default fallback for untagged categories
+  });
+
+  const activeThemeId = activeThemeTab !== 'all' ? activeThemeTab : (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic');
+  const themeConfig = getThemeConfig(activeThemeId || 'islamic');
+
   return (
     <div
-      className="min-h-screen w-full select-none flex items-center justify-center p-4 py-8 font-sans overflow-hidden relative"
+      className="min-h-screen w-full select-none flex items-center justify-center p-4 py-8 font-sans overflow-hidden relative transition-all duration-700"
       style={{
-        backgroundImage: `url('/image/mainmenubg1.jpg')`,
+        backgroundImage: `url('${themeConfig.bgImage || '/image/mainmenubg1.jpg'}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -108,14 +124,44 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* CATEGORY SELECTION GRID */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <label className="text-xs md:text-sm font-extrabold text-[#78350F] uppercase tracking-wider flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-[#D97706]" />
-                <span>Pilih Bidang Keilmuan Islami:</span>
+                <span>Pilih Kategori Kuis:</span>
               </label>
               <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
                 {selectedCategory}
               </span>
+            </div>
+
+            {/* Theme Filter Pills */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {[
+                { id: 'all', label: 'Semua Kategori', icon: '✨' },
+                { id: 'islamic', label: 'Islami', icon: '🕌' },
+                { id: 'independence', label: 'Kemerdekaan', icon: '🇲🇨' },
+                { id: 'culture', label: 'Kebudayaan', icon: '🎭' },
+              ].map((tab) => {
+                const isActive = activeThemeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      audioManager.playClick();
+                      setActiveThemeTab(tab.id as any);
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-black transition cursor-pointer flex items-center gap-1 border ${
+                      isActive
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm scale-105'
+                        : 'bg-white/80 text-amber-900 border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-1 p-1">
@@ -149,7 +195,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
               </button>
 
               {/* Dynamic Database Categories */}
-              {categories.map((cat) => {
+              {filteredCategories.map((cat) => {
                 const isSelected = selectedCategory === cat.name;
                 return (
                   <button

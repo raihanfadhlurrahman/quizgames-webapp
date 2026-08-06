@@ -22,7 +22,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   onBack,
 }) => {
   // Top-level Mode Tab State
-  const [activeModeTab, setActiveModeTab] = useState<LeaderboardTab>('MILLIONAIRE');
+  const [activeModeTab, setActiveModeTab] = useState<LeaderboardTab>('ALL');
 
   // Millionaire Mode States
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -59,9 +59,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   }, []);
 
   // Fetch Millionaire Leaderboard
-  const fetchMillionaireLeaderboard = async (catName: string = selectedCategory) => {
+  const fetchMillionaireLeaderboard = async (tabMode: LeaderboardTab = activeModeTab) => {
     setLoading(true);
-    const data = await GameService.getLeaderboard(catName, 20);
+    const data = await GameService.getLeaderboard(tabMode, 20);
     setEntries(data);
 
     if (userProfile && userProfile.id) {
@@ -77,7 +77,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           total_games: item.total_games || 0,
         });
       } else {
-        const stats = await GameService.getUserBestStats(userProfile.id, catName);
+        const stats = await GameService.getUserBestStats(userProfile.id, tabMode);
         setCurrentUserBest(stats);
       }
     } else {
@@ -117,8 +117,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   useEffect(() => {
     if (isOpen) {
       setUserProfile(ProfileService.getProfileOrDefault());
-      if (activeModeTab === 'MILLIONAIRE') {
-        fetchMillionaireLeaderboard(selectedCategory);
+      if (activeModeTab !== 'QUROOM') {
+        fetchMillionaireLeaderboard(activeModeTab);
       } else {
         fetchRecentQuRooms(selectedQuRoomId);
       }
@@ -128,10 +128,10 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         const channel = activeClient
           .channel('realtime_leaderboard_all')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-            if (activeModeTab === 'MILLIONAIRE') fetchMillionaireLeaderboard(selectedCategory);
+            if (activeModeTab !== 'QUROOM') fetchMillionaireLeaderboard(activeModeTab);
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'leaderboard' }, () => {
-            if (activeModeTab === 'MILLIONAIRE') fetchMillionaireLeaderboard(selectedCategory);
+            if (activeModeTab !== 'QUROOM') fetchMillionaireLeaderboard(activeModeTab);
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_rooms' }, () => {
             if (activeModeTab === 'QUROOM') fetchRecentQuRooms(selectedQuRoomId);
@@ -148,7 +148,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         };
       }
     }
-  }, [isOpen, selectedCategory, activeModeTab]);
+  }, [isOpen, activeModeTab]);
 
   if (!isOpen) return null;
 
@@ -211,20 +211,62 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             <X className="w-5 h-5 md:w-6 md:h-6 stroke-[3]" />
           </button>
 
-          {/* TOP MODE TAB SWITCHER: MILLIONAIRE vs QUROOM LIVE */}
-          <div className="relative z-10 flex items-center justify-center gap-2 mb-3 bg-[#FEF3C7]/90 p-1.5 rounded-2xl border-2 border-[#FDE68A] shadow-inner">
+          {/* TOP MODE TAB SWITCHER: 5 TABS */}
+          <div className="relative z-10 flex items-center justify-center gap-1 sm:gap-1.5 mb-3 bg-[#FEF3C7]/90 p-1.5 rounded-2xl border-2 border-[#FDE68A] shadow-inner overflow-x-auto">
             <button
               onClick={() => {
                 audioManager.playClick();
-                setActiveModeTab('MILLIONAIRE');
+                setActiveModeTab('ALL');
               }}
-              className={`flex-1 py-2 px-3 rounded-xl font-black text-xs md:text-sm flex items-center justify-center gap-2 transition cursor-pointer ${
-                activeModeTab === 'MILLIONAIRE'
+              className={`py-1.5 px-2.5 rounded-xl font-black text-[11px] md:text-xs flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                activeModeTab === 'ALL'
                   ? 'bg-gradient-to-r from-[#D97706] to-[#B45309] text-white shadow-md border border-amber-300'
                   : 'text-[#78350F] hover:bg-amber-200/60'
               }`}
             >
-              <span>🏆 Millionaire Solo</span>
+              <span>🏆 Semua</span>
+            </button>
+
+            <button
+              onClick={() => {
+                audioManager.playClick();
+                setActiveModeTab('ISLAMIC');
+              }}
+              className={`py-1.5 px-2.5 rounded-xl font-black text-[11px] md:text-xs flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                activeModeTab === 'ISLAMIC'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md border border-emerald-300'
+                  : 'text-[#78350F] hover:bg-amber-200/60'
+              }`}
+            >
+              <span>🕌 Poin Amal</span>
+            </button>
+
+            <button
+              onClick={() => {
+                audioManager.playClick();
+                setActiveModeTab('INDEPENDENCE');
+              }}
+              className={`py-1.5 px-2.5 rounded-xl font-black text-[11px] md:text-xs flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                activeModeTab === 'INDEPENDENCE'
+                  ? 'bg-gradient-to-r from-red-600 to-rose-700 text-white shadow-md border border-red-300'
+                  : 'text-[#78350F] hover:bg-amber-200/60'
+              }`}
+            >
+              <span>🇲🇨 Poin Wawasan</span>
+            </button>
+
+            <button
+              onClick={() => {
+                audioManager.playClick();
+                setActiveModeTab('CULTURE');
+              }}
+              className={`py-1.5 px-2.5 rounded-xl font-black text-[11px] md:text-xs flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
+                activeModeTab === 'CULTURE'
+                  ? 'bg-gradient-to-r from-amber-700 to-orange-800 text-white shadow-md border border-amber-400'
+                  : 'text-[#78350F] hover:bg-amber-200/60'
+              }`}
+            >
+              <span>🎭 Poin Budaya</span>
             </button>
 
             <button
@@ -233,38 +275,52 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 setActiveModeTab('QUROOM');
                 fetchRecentQuRooms(selectedQuRoomId);
               }}
-              className={`flex-1 py-2 px-3 rounded-xl font-black text-xs md:text-sm flex items-center justify-center gap-2 transition cursor-pointer ${
+              className={`py-1.5 px-2.5 rounded-xl font-black text-[11px] md:text-xs flex items-center justify-center gap-1 transition cursor-pointer whitespace-nowrap ${
                 activeModeTab === 'QUROOM'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md border border-emerald-300'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-700 text-white shadow-md border border-purple-300'
                   : 'text-[#78350F] hover:bg-amber-200/60'
               }`}
             >
-              <span>🎮 QuRoom Live (5 Sesi Terakhir)</span>
+              <span>🎮 QuRoom Live</span>
             </button>
           </div>
 
           {/* MODE 1: MILLIONAIRE SOLO MODE CONTENT */}
-          {activeModeTab === 'MILLIONAIRE' && (
+          {activeModeTab !== 'QUROOM' && (
             <>
               {/* SUBTITLE & REFRESH ACTION BAR */}
-              <div className="relative z-10 flex items-center justify-between mt-1 mb-2 pb-2 border-b-2 border-amber-200/80">
+              <div className="relative z-10 flex items-center justify-between mt-1 mb-3 pb-2 border-b-2 border-amber-200/80">
                 <div>
                   <h3 className="text-base md:text-lg font-black text-[#78350F] flex items-center gap-2 flex-wrap">
-                    <span>Top Skor Millionaire Solo</span>
+                    <span>
+                      {activeModeTab === 'ALL'
+                        ? '🏆 Klasemen Global Pemain'
+                        : activeModeTab === 'ISLAMIC'
+                        ? '🕌 Ranking Poin Amal Islami'
+                        : activeModeTab === 'INDEPENDENCE'
+                        ? '🇲🇨 Ranking Poin Wawasan Kemerdekaan'
+                        : '🎭 Ranking Poin Budaya Nusantara'}
+                    </span>
                     <span className="bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs border border-emerald-400 animate-pulse">
                       <Zap className="w-3 h-3 fill-current text-yellow-300" />
                       LIVE REALTIME
                     </span>
                   </h3>
                   <p className="text-xs text-amber-800 font-semibold">
-                    {selectedCategory === 'Global' ? 'Peringkat kuis solo terbaik seluruh pemain' : `Peringkat khusus kategori ${selectedCategory}`}
+                    {activeModeTab === 'ALL'
+                      ? 'Total gabungan Poin Amal, Wawasan, & Budaya seluruh pemain'
+                      : activeModeTab === 'ISLAMIC'
+                      ? 'Papan peringkat Poin Amal terbanyak (Kuis Islami)'
+                      : activeModeTab === 'INDEPENDENCE'
+                      ? 'Papan peringkat Poin Wawasan terbanyak (Kuis Kemerdekaan)'
+                      : 'Papan peringkat Poin Duta Budaya terbanyak (Kuis Kebudayaan)'}
                   </p>
                 </div>
 
                 <button
                   onClick={() => {
                     audioManager.playClick();
-                    fetchMillionaireLeaderboard(selectedCategory);
+                    fetchMillionaireLeaderboard(activeModeTab);
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-[#FEF3C7] hover:bg-amber-200 text-[#78350F] font-extrabold text-xs border-2 border-[#FDE68A] transition cursor-pointer shadow-sm active:scale-95"
                 >
@@ -273,57 +329,28 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 </button>
               </div>
 
-              {/* CATEGORY FILTER TAB BAR */}
-              <div className="relative z-10 flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 custom-scrollbar">
-                <button
-                  onClick={() => {
-                    audioManager.playClick();
-                    setSelectedCategory('Global');
-                    fetchMillionaireLeaderboard('Global');
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-black transition flex-shrink-0 flex items-center gap-1 border cursor-pointer ${
-                    selectedCategory === 'Global'
-                      ? 'bg-[#B45309] text-white border-amber-300 shadow-md'
-                      : 'bg-[#FFFDF3] text-amber-900 border-amber-200 hover:bg-amber-100'
-                  }`}
-                >
-                  <span>🌐 Global</span>
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id || cat.name}
-                    onClick={() => {
-                      audioManager.playClick();
-                      setSelectedCategory(cat.name);
-                      fetchMillionaireLeaderboard(cat.name);
-                    }}
-                    className={`px-3 py-1 rounded-full text-xs font-black transition flex-shrink-0 flex items-center gap-1 border cursor-pointer ${
-                      selectedCategory === cat.name
-                        ? 'bg-[#B45309] text-white border-amber-300 shadow-md'
-                        : 'bg-[#FFFDF3] text-amber-900 border-amber-200 hover:bg-amber-100'
-                    }`}
-                  >
-                    <span>{cat.icon || '🕌'}</span>
-                    <span>{cat.name}</span>
-                  </button>
-                ))}
-              </div>
-
               {/* LEADERBOARD LIST */}
               {loading ? (
                 <div className="relative z-10 py-16 text-center text-amber-900 font-bold text-sm flex flex-col items-center justify-center gap-2">
                   <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
                   <span>Memuat data peringkat terkini...</span>
                 </div>
-              ) : entries.length === 0 ? (
-                <div className="relative z-10 py-16 text-center text-amber-900/70 font-semibold text-sm space-y-1">
-                  <div className="text-4xl mb-2">🏆</div>
-                  <p>Belum ada skor tercatat.</p>
-                  <p className="text-xs text-amber-700">Jadilah pemain pertama yang memenangkan kuis!</p>
-                </div>
-              ) : (
-                <div className="relative z-10 space-y-2 max-h-[300px] md:max-h-[340px] overflow-y-auto pr-1.5 custom-scrollbar">
-                  {entries.map((entry, index) => {
+              ) : (() => {
+                const displayedEntries = entries;
+
+                if (displayedEntries.length === 0) {
+                  return (
+                    <div className="relative z-10 py-16 text-center text-amber-900/70 font-semibold text-sm space-y-1">
+                      <div className="text-4xl mb-2">🏆</div>
+                      <p>Belum ada skor tercatat untuk kategori ini.</p>
+                      <p className="text-xs text-amber-700">Jadilah pemain pertama yang memenangkan kuis!</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="relative z-10 space-y-2 max-h-[300px] md:max-h-[340px] overflow-y-auto pr-1.5 custom-scrollbar">
+                    {displayedEntries.map((entry, index) => {
                     const isTop1 = index === 0;
                     const isTop2 = index === 1;
                     const isTop3 = index === 2;
@@ -392,14 +419,21 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                             {entry.score.toLocaleString('id-ID')}
                           </span>
                           <span className="text-[10px] text-amber-900 font-black tracking-wider uppercase block">
-                            Poin Amal
+                            {activeModeTab === 'ALL'
+                              ? 'Total Poin'
+                              : activeModeTab === 'INDEPENDENCE'
+                              ? 'Poin Wawasan 🇲🇨'
+                              : activeModeTab === 'CULTURE'
+                              ? 'Poin Budaya 🎭'
+                              : 'Poin Amal 💚'}
                           </span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              )}
+              );
+            })()}
 
               {/* USER'S OWN BEST RANK CARD */}
               {userProfile && userProfile.id && (
@@ -530,7 +564,16 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                           PIN {quRoomDetails.session.room_code}
                         </span>
                         <span className="text-xs font-extrabold text-emerald-300 truncate">
-                          {quRoomDetails.session.category_name} • {quRoomDetails.session.total_questions} Soal
+                          {quRoomDetails.session.theme_id === 'independence'
+                            ? 'Tema Kemerdekaan 🇲🇨'
+                            : quRoomDetails.session.theme_id === 'culture'
+                            ? 'Tema Kebudayaan 🎭'
+                            : quRoomDetails.session.theme_id === 'islamic'
+                            ? 'Tema Islami 🕌'
+                            : quRoomDetails.session.category_name && quRoomDetails.session.category_name !== 'Campuran'
+                            ? quRoomDetails.session.category_name
+                            : 'Tema Islami 🕌'}{' '}
+                          • {quRoomDetails.session.total_questions} Soal
                         </span>
                       </div>
 

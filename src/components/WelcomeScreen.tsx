@@ -23,9 +23,11 @@ import {
 } from 'lucide-react';
 import { audioManager } from '@/lib/audioManager';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
+import { AppTheme, THEME_CONFIGS, getThemeConfig } from '@/lib/themeConfig';
 import { UserProfileModal } from './UserProfileModal';
 import { LeaderboardView } from './LeaderboardView';
 import { AuthModal } from './AuthModal';
+import { ThemeSelectModal } from './ThemeSelectModal';
 
 interface WelcomeScreenProps {
   onStart: () => void;
@@ -50,14 +52,24 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showThemeSelectModal, setShowThemeSelectModal] = useState<boolean>(false);
   const [activeModal, setActiveModal] = useState<
     'MATERI' | 'PENGATURAN' | 'DAILY' | 'BADGE' | 'TOKO' | 'ABOUT' | null
   >(null);
 
+  const [activeTheme, setActiveTheme] = useState<AppTheme>('islamic');
   const [isMounted, setIsMounted] = useState<boolean>(false);
 
   useEffect(() => {
     setIsMounted(true);
+    // Load saved theme preference, or show Theme Selection Modal if not set yet
+    const savedTheme = localStorage.getItem('app_theme') as AppTheme;
+    if (savedTheme && savedTheme in THEME_CONFIGS) {
+      setActiveTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+      setShowThemeSelectModal(true);
+    }
     // Check local storage and sync with Supabase
     ProfileService.fetchProfileFromServer().then((p) => {
       if (p) {
@@ -72,6 +84,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       }
     });
   }, []);
+
+  const handleSelectTheme = (themeId: AppTheme) => {
+    audioManager.playClick();
+    setActiveTheme(themeId);
+    localStorage.setItem('app_theme', themeId);
+    document.documentElement.setAttribute('data-theme', themeId);
+  };
+
+  const themeConfig = getThemeConfig(activeTheme);
 
   const handleButtonClick = (action: () => void) => {
     audioManager.playClick();
@@ -94,9 +115,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div
-      className="relative w-full h-screen max-h-screen main-menu-bg select-none flex flex-col justify-between font-sans overflow-hidden"
+      className="relative w-full h-screen max-h-screen main-menu-bg select-none flex flex-col justify-between font-sans overflow-hidden transition-all duration-700"
       style={{
-        backgroundImage: `url('/image/mainmenubg1.jpg')`,
+        backgroundImage: `url('${themeConfig.bgImage || '/image/mainmenubg1.jpg'}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -106,9 +127,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <div className="absolute inset-0 bg-black/10 pointer-events-none" />
 
       {/* TOP HEADER BAR */}
-      <header className="relative z-10 w-full p-2.5 md:p-3.5 flex items-start justify-between">
-        {/* Left Spacer / Decorative */}
-        <div className="hidden md:block" />
+      <header className="relative z-10 w-full p-2.5 md:p-3.5 flex flex-wrap items-center justify-between gap-2">
+        {/* Left: Ganti Tema Button (Triggers Theme Selection Modal) */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleButtonClick(() => setShowThemeSelectModal(true))}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-black/50 backdrop-blur-md border-2 border-amber-300/60 shadow-lg text-white font-extrabold text-xs md:text-sm transition cursor-pointer hover:border-amber-400"
+        >
+          <span className="text-base">🎨</span>
+          <span>Tema:</span>
+          <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 px-2.5 py-0.5 rounded-full font-black text-xs flex items-center gap-1 shadow-sm">
+            <span>{themeConfig.icon}</span>
+            <span>{themeConfig.name}</span>
+          </span>
+        </motion.button>
 
         {/* Right Top User Profile Card (Clicking Opens "Profil Saya" Modal) */}
         {isMounted && profile && profile.id ? (
@@ -125,14 +158,15 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           >
             {/* Subtle contrast overlay so custom background image POPS clearly */}
             <div className="absolute inset-0 bg-black/25 backdrop-blur-[0.5px] pointer-events-none" />
+            
             {/* Avatar Icon / PNG Image with Dynamic PNG Border Overlay */}
             <div className="relative z-10 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center flex-shrink-0">
-              <div className="w-[82%] h-[82%] rounded-full bg-[#FEF3C7] flex items-center justify-center overflow-hidden shadow-inner border border-amber-300">
+              <div className="w-[82%] h-[82%] rounded-full flex items-center justify-center overflow-hidden absolute z-0 -translate-y-0.5">
                 {profile.avatar.startsWith('/') ? (
                   <img
                     src={profile.avatar}
                     alt={profile.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-center scale-105"
                   />
                 ) : (
                   <span className="text-2xl md:text-3xl">{profile.avatar}</span>
@@ -141,7 +175,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <img
                 src={profile.border_frame || profile.border_color || '/image/border/1.png'}
                 alt="Bingkai Profile"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-105"
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-125"
               />
             </div>
 
@@ -153,7 +187,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </span>
                 <span className="bg-[#FBBF24] text-[#78350F] text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
                   <Star className="w-3 h-3 fill-current" />
-                  Lv. {ProfileService.calculateLevelInfo(profile.amal_points).level}
+                  Lv. {ProfileService.calculateLevelInfo(ProfileService.getTotalPoints(profile)).level}
                 </span>
               </div>
 
@@ -161,16 +195,16 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <div className="w-28 md:w-36 bg-[#E2E8F0] h-2 rounded-full overflow-hidden border border-[#CBD5E1]">
                 <div
                   className="bg-[#10B981] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${ProfileService.calculateLevelInfo(profile.amal_points).progressPercent}%` }}
+                  style={{ width: `${ProfileService.calculateLevelInfo(ProfileService.getTotalPoints(profile)).progressPercent}%` }}
                 />
               </div>
 
-              {/* Amal Point Indicator */}
-              <div className="flex items-center gap-1.5 text-xs font-bold text-[#047857]">
-                <div className="w-4 h-4 rounded-full bg-[#10B981] text-white flex items-center justify-center text-[10px]">
-                  💚
+              {/* Total Combined Points Indicator */}
+              <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+                <div className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-black">
+                  🌐
                 </div>
-                <span>{profile.amal_points.toLocaleString()} Amal</span>
+                <span>{ProfileService.getTotalPoints(profile).toLocaleString('id-ID')} Total Poin</span>
               </div>
             </div>
 
@@ -203,9 +237,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       </header>
 
       {/* MAIN MENU CONTENT AREA (LEFT SIDE NAVIGATION & BUTTONS) */}
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 py-1 flex flex-col justify-center flex-1 min-h-0">
-        <div className="max-w-md space-y-2 md:space-y-3">
-          {/* GAME LOGO IMAGE WITH SMOOTH ENTRANCE & FLOATING ANIMATION */}
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-8 py-2 flex flex-col flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-md w-full mx-auto md:mx-0 flex flex-col flex-1 h-full justify-between py-1">
+          {/* GAME LOGO IMAGE AT TOP END WITH FLOATING ANIMATION */}
           <motion.div
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: [0, -4, 0], scale: 1 }}
@@ -214,184 +248,189 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               scale: { duration: 0.5 },
               y: { repeat: Infinity, duration: 3.5, ease: 'easeInOut' },
             }}
-            className="relative pb-0.5 flex justify-center animate-floating-logo"
+            className="relative flex items-center justify-center animate-floating-logo pt-1 pb-2 flex-1 min-h-[140px]"
           >
             <img
-              src="/image/logo.png"
-              alt="Islamic Millionaire Logo"
-              className="w-full h-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)] pointer-events-none"
+              src={themeConfig.logoMenu || '/image/logo.png'}
+              alt={`${themeConfig.name} Quiz Logo`}
+              className="w-full h-full max-h-[380px] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.4)] pointer-events-none transition-all duration-500 mx-auto"
             />
           </motion.div>
 
-          {/* MAIN VERTICAL BUTTON MENU */}
-          <div className="space-y-2 md:space-y-2.5">
-            {/* 🟢 MULAI BERMAIN (BIG GREEN BUTTON - ACTIVE) */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  onStart();
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="w-full py-2.5 md:py-3 px-4 rounded-xl md:rounded-2xl green-btn-3d font-extrabold text-base md:text-lg flex items-center justify-between transition cursor-pointer"
-            >
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center">
-                <Play className="w-4 h-4 md:w-5 h-5 fill-current text-white translate-x-0.5" />
-              </div>
-              <span className="tracking-wide text-white drop-shadow-md">MULAI BERMAIN</span>
-              <ChevronRight className="w-5 h-5 text-white/80" />
-            </motion.button>
+          {/* FLEXIBLE EMPTY SPACER BETWEEN LOGO AND BUTTONS */}
+          <div className="flex-1 min-h-[8px] max-h-[32px]" />
 
-            {/* 🎮 MASUK ROOM PIN KUIS (KAHOOT STYLE - ACTIVE) */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  if (onOpenRoomJoin) onOpenRoomJoin();
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="w-full py-2.5 px-4 rounded-xl md:rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-extrabold text-sm md:text-base flex items-center justify-between border-2 border-amber-300 shadow-[0_4px_0_#B45309] transition cursor-pointer active:translate-y-0.5 active:shadow-none"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-base">
-                  🎮
+          {/* MAIN VERTICAL BUTTON MENU AT BOTTOM END */}
+          <div className="space-y-2 md:space-y-2.5 pb-1">
+            <div className="space-y-1.5 md:space-y-2">
+              {/* 🟢 MULAI BERMAIN (BIG GREEN BUTTON - ACTIVE) */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    onStart();
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="w-full py-2.5 md:py-3 px-4 rounded-xl md:rounded-2xl green-btn-3d font-extrabold text-sm md:text-base flex items-center justify-between transition cursor-pointer"
+              >
+                <div className="w-7.5 h-7.5 md:w-8 md:h-8 rounded-full bg-white/20 border-2 border-white/40 flex items-center justify-center">
+                  <Play className="w-4 h-4 fill-current text-white translate-x-0.5" />
                 </div>
-                <span className="tracking-wide text-white drop-shadow-sm font-black">MASUK ROOM PIN KUIS</span>
-              </div>
-              <div className="flex items-center gap-1 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-xs border border-red-400">
-                <span>⚡ LIVE PIN</span>
-              </div>
-            </motion.button>
+                <span className="tracking-wide text-white drop-shadow-md">MULAI BERMAIN</span>
+                <ChevronRight className="w-5 h-5 text-white/80" />
+              </motion.button>
 
-            {/* 📜 MATERI ISLAMI (LOCKED / COMING SOON) */}
-            <motion.button
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  setActiveModal('MATERI');
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="w-full py-2 md:py-2.5 px-4 rounded-xl bg-[#FFFDF3]/90 border-4 border-slate-300 shadow-[0_3px_0_#94A3B8] text-slate-600 font-bold text-sm md:text-base flex items-center justify-between transition cursor-pointer relative"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-sm grayscale">
-                  📖
+              {/* 🎮 MASUK ROOM PIN KUIS (KAHOOT STYLE - ACTIVE) */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    if (onOpenRoomJoin) onOpenRoomJoin();
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="w-full py-2 md:py-2.5 px-4 rounded-xl md:rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-extrabold text-xs md:text-sm flex items-center justify-between border-2 border-amber-300 shadow-[0_3.5px_0_#B45309] transition cursor-pointer active:translate-y-0.5 active:shadow-none"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 md:w-7.5 md:h-7.5 rounded-full bg-white/20 border border-white/40 flex items-center justify-center text-xs md:text-sm">
+                    🎮
+                  </div>
+                  <span className="tracking-wide text-white drop-shadow-sm font-black">MASUK ROOM PIN KUIS</span>
                 </div>
-                <span className="tracking-wide text-slate-600">MATERI ISLAMI</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-amber-500/20 text-amber-800 text-[9px] md:text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-amber-400">
-                <Lock className="w-2.5 h-2.5 text-amber-600" />
-                <span>COMING SOON</span>
-              </div>
-            </motion.button>
+                <div className="flex items-center gap-1 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-xs border border-red-400">
+                  <span>⚡ LIVE PIN</span>
+                </div>
+              </motion.button>
 
-            {/* 🏆 LEADERBOARD (ACTIVE) */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  setShowLeaderboardModal(true);
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="w-full py-2 md:py-2.5 px-4 rounded-xl cream-btn-3d font-bold text-sm md:text-base flex items-center justify-between transition cursor-pointer"
-            >
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#FEF3C7] border-2 border-[#F59E0B] flex items-center justify-center text-sm">
-                🏆
-              </div>
-              <span className="tracking-wide">LEADERBOARD</span>
-              <ChevronRight className="w-4 h-4 text-[#B45309]" />
-            </motion.button>
+              {/* 📜 MATERI ISLAMI (LOCKED / COMING SOON) */}
+              <motion.button
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    setActiveModal('MATERI');
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="w-full py-1.5 md:py-2 px-4 rounded-xl bg-[#FFFDF3]/90 border-3 border-slate-300 shadow-[0_2.5px_0_#94A3B8] text-slate-600 font-bold text-xs md:text-sm flex items-center justify-between transition cursor-pointer relative"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-6.5 h-6.5 md:w-7 md:h-7 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-xs grayscale">
+                    📖
+                  </div>
+                  <span className="tracking-wide text-slate-600 uppercase">Materi Edukasi</span>
+                </div>
+                <div className="flex items-center gap-1 bg-amber-500/20 text-amber-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-amber-400">
+                  <Lock className="w-2.5 h-2.5 text-amber-600" />
+                  <span>COMING SOON</span>
+                </div>
+              </motion.button>
 
-            {/* ⚙️ PENGATURAN (ACTIVE) */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleButtonClick(() => setActiveModal('PENGATURAN'))}
-              className="w-full py-2 md:py-2.5 px-4 rounded-xl cream-btn-3d font-bold text-sm md:text-base flex items-center justify-between transition cursor-pointer"
-            >
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#E0F2FE] border-2 border-[#38BDF8] flex items-center justify-center text-sm">
-                ⚙️
-              </div>
-              <span className="tracking-wide">PENGATURAN</span>
-              <ChevronRight className="w-4 h-4 text-[#B45309]" />
-            </motion.button>
-          </div>
+              {/* 🏆 LEADERBOARD (ACTIVE) */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    setShowLeaderboardModal(true);
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="w-full py-1.5 md:py-2 px-4 rounded-xl cream-btn-3d font-bold text-xs md:text-sm flex items-center justify-between transition cursor-pointer"
+              >
+                <div className="w-6.5 h-6.5 md:w-7 md:h-7 rounded-full bg-[#FEF3C7] border-2 border-[#F59E0B] flex items-center justify-center text-xs">
+                  🏆
+                </div>
+                <span className="tracking-wide">LEADERBOARD</span>
+                <ChevronRight className="w-4 h-4 text-[#B45309]" />
+              </motion.button>
 
-          {/* BOTTOM QUICK WIDGET BUTTONS (Daily Challenge, Badge, Toko - LOCKED) */}
-          <div className="grid grid-cols-3 gap-2 pt-0.5">
-            {/* Daily Challenge (Locked) */}
-            <button
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  setActiveModal('DAILY');
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="p-1.5 rounded-xl bg-[#FFFDF3]/80 border-2 border-slate-300 shadow-[0_2px_0_#94A3B8] hover:scale-105 active:scale-95 text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer transition relative"
-            >
-              <div className="absolute top-1 right-1 text-amber-600 bg-amber-100 p-0.5 rounded-full border border-amber-300">
-                <Lock className="w-2 h-2" />
-              </div>
-              <div className="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-sm grayscale">
-                📅
-              </div>
-              <span className="text-[9px] md:text-[10px] font-bold text-slate-500">
-                Daily Challenge
-              </span>
-            </button>
+              {/* ⚙️ PENGATURAN (ACTIVE) */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleButtonClick(() => setActiveModal('PENGATURAN'))}
+                className="w-full py-1.5 md:py-2 px-4 rounded-xl cream-btn-3d font-bold text-xs md:text-sm flex items-center justify-between transition cursor-pointer"
+              >
+                <div className="w-6.5 h-6.5 md:w-7 md:h-7 rounded-full bg-[#E0F2FE] border-2 border-[#38BDF8] flex items-center justify-center text-xs">
+                  ⚙️
+                </div>
+                <span className="tracking-wide">PENGATURAN</span>
+                <ChevronRight className="w-4 h-4 text-[#B45309]" />
+              </motion.button>
+            </div>
 
-            {/* Badge (Locked) */}
-            <button
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  setActiveModal('BADGE');
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="p-1.5 rounded-xl bg-[#FFFDF3]/80 border-2 border-slate-300 shadow-[0_2px_0_#94A3B8] hover:scale-105 active:scale-95 text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer transition relative"
-            >
-              <div className="absolute top-1 right-1 text-amber-600 bg-amber-100 p-0.5 rounded-full border border-amber-300">
-                <Lock className="w-2 h-2" />
-              </div>
-              <div className="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-sm grayscale">
-                🛡️
-              </div>
-              <span className="text-[9px] md:text-[10px] font-bold text-slate-500">Badge</span>
-            </button>
+            {/* BOTTOM QUICK WIDGET BUTTONS (Daily Challenge, Badge, Toko - LOCKED) */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              {/* Daily Challenge (Locked) */}
+              <button
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    setActiveModal('DAILY');
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="p-1.5 rounded-xl bg-[#FFFDF3]/90 border-2 border-slate-300 shadow-[0_2px_0_#94A3B8] hover:scale-105 active:scale-95 text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer transition relative"
+              >
+                <div className="absolute top-1 right-1 text-amber-600 bg-amber-100 p-0.5 rounded-full border border-amber-300">
+                  <Lock className="w-2 h-2" />
+                </div>
+                <div className="w-5.5 h-5.5 rounded-lg bg-slate-200 flex items-center justify-center text-xs grayscale">
+                  📅
+                </div>
+                <span className="text-[9px] font-bold text-slate-500 leading-none">
+                  Daily Challenge
+                </span>
+              </button>
 
-            {/* Toko (Locked) */}
-            <button
-              onClick={() => handleButtonClick(() => {
-                if (profile && profile.id) {
-                  setActiveModal('TOKO');
-                } else {
-                  setShowAuthModal(true);
-                }
-              })}
-              className="p-1.5 rounded-xl bg-[#FFFDF3]/80 border-2 border-slate-300 shadow-[0_2px_0_#94A3B8] hover:scale-105 active:scale-95 text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer transition relative"
-            >
-              <div className="absolute top-1 right-1 text-amber-600 bg-amber-100 p-0.5 rounded-full border border-amber-300">
-                <Lock className="w-2 h-2" />
-              </div>
-              <div className="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-sm grayscale">
-                🏪
-              </div>
-              <span className="text-[9px] md:text-[10px] font-bold text-slate-500">Toko</span>
-            </button>
+              {/* Badge (Locked) */}
+              <button
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    setActiveModal('BADGE');
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="p-1.5 rounded-xl bg-[#FFFDF3]/90 border-2 border-slate-300 shadow-[0_2px_0_#94A3B8] hover:scale-105 active:scale-95 text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer transition relative"
+              >
+                <div className="absolute top-1 right-1 text-amber-600 bg-amber-100 p-0.5 rounded-full border border-amber-300">
+                  <Lock className="w-2 h-2" />
+                </div>
+                <div className="w-5.5 h-5.5 rounded-lg bg-slate-200 flex items-center justify-center text-xs grayscale">
+                  🛡️
+                </div>
+                <span className="text-[9px] font-bold text-slate-500 leading-none">Badge</span>
+              </button>
+
+              {/* Toko (Locked) */}
+              <button
+                onClick={() => handleButtonClick(() => {
+                  if (profile && profile.id) {
+                    setActiveModal('TOKO');
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                })}
+                className="p-1.5 rounded-xl bg-[#FFFDF3]/90 border-2 border-slate-300 shadow-[0_2px_0_#94A3B8] hover:scale-105 active:scale-95 text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer transition relative"
+              >
+                <div className="absolute top-1 right-1 text-amber-600 bg-amber-100 p-0.5 rounded-full border border-amber-300">
+                  <Lock className="w-2 h-2" />
+                </div>
+                <div className="w-5.5 h-5.5 rounded-lg bg-slate-200 flex items-center justify-center text-xs grayscale">
+                  🏪
+                </div>
+                <span className="text-[9px] font-bold text-slate-500 leading-none">Toko</span>
+              </button>
+            </div>
           </div>
         </div>
       </main>
@@ -547,6 +586,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
+      />
+
+      <ThemeSelectModal
+        isOpen={showThemeSelectModal}
+        activeTheme={activeTheme}
+        onSelectTheme={handleSelectTheme}
+        onClose={() => setShowThemeSelectModal(false)}
       />
     </div>
   );

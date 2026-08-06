@@ -4,6 +4,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, ArrowRight, Star } from 'lucide-react';
 import { Question } from '@/types/game';
+import { getThemeConfig, getThemeByCategory } from '@/lib/themeConfig';
 
 interface AnswerFeedbackModalProps {
   isOpen: boolean;
@@ -21,6 +22,9 @@ export const AnswerFeedbackModal: React.FC<AnswerFeedbackModalProps> = ({
   onNext,
 }) => {
   if (!isOpen) return null;
+
+  const themeId = question.theme_id || getThemeByCategory(question.category_name);
+  const themeConfig = getThemeConfig(themeId);
 
   const getOptionText = (optKey: 'A' | 'B' | 'C' | 'D') => {
     switch (optKey) {
@@ -73,7 +77,9 @@ export const AnswerFeedbackModal: React.FC<AnswerFeedbackModalProps> = ({
 
             {/* GREETING TEXT */}
             <h4 className="text-base sm:text-lg font-black text-[#1E293B]">
-              {isCorrect ? 'MasyaAllah! Jawabanmu benar sekali!' : 'Yuk, tetap semangat! Kamu pasti bisa!'}
+              {isCorrect
+                ? `Luar biasa! Jawabanmu benar sekali! ${themeConfig.icon}`
+                : 'Yuk, tetap semangat! Kamu pasti bisa! 💪'}
             </h4>
           </div>
 
@@ -131,29 +137,31 @@ export const AnswerFeedbackModal: React.FC<AnswerFeedbackModalProps> = ({
             </div>
           </div>
 
-          {/* DALIL SECTION WITH DECORATIVE LANTERN IMAGE */}
+          {/* REFERENCE / DALIL SECTION */}
           {question.dalil && (
             <div className="bg-[#FEF3C7]/60 border border-[#FDE68A] rounded-2xl p-4 mb-5 relative overflow-hidden">
               <div className="flex items-start justify-between gap-3 relative z-10">
                 <div className="space-y-1 pr-12">
-                  <span className="font-extrabold text-xs text-[#78350F] uppercase tracking-wider block">
-                    Dalil
+                  <span className="font-extrabold text-xs text-[#78350F] uppercase tracking-wider flex items-center gap-1">
+                    <span>{themeConfig.referenceIcon}</span>
+                    <span>{themeConfig.referenceLabel}</span>
                   </span>
                   <p className="text-xs sm:text-sm font-semibold text-[#451A03] italic leading-relaxed">
                     "{question.dalil}"
                   </p>
-                  <span className="text-[11px] font-extrabold text-[#047857] block pt-1">
-                    (HR. Bukhari dan Muslim / Al-Qur'an)
-                  </span>
                 </div>
 
-                {/* Lantern Decorative Image */}
-                <div className="absolute right-2 bottom-1 w-12 h-16 pointer-events-none flex items-end justify-end">
-                  <img
-                    src="/image/lenteraicon.png"
-                    alt="Lentera Icon"
-                    className="w-full h-full object-contain drop-shadow-md"
-                  />
+                {/* Decorative Icon */}
+                <div className="absolute right-2 bottom-1 w-12 h-16 pointer-events-none flex items-end justify-end opacity-80">
+                  {themeId === 'islamic' ? (
+                    <img
+                      src="/image/lenteraicon.png"
+                      alt="Lentera Icon"
+                      className="w-full h-full object-contain drop-shadow-md"
+                    />
+                  ) : (
+                    <span className="text-3xl">{themeConfig.icon}</span>
+                  )}
                 </div>
               </div>
             </div>

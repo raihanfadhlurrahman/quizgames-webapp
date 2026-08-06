@@ -38,6 +38,7 @@ export class GameService {
           name: category.name.trim(),
           icon: category.icon || '🕌',
           description: category.description || '',
+          theme_id: category.theme_id || 'islamic',
         };
         if (category.id && !category.id.startsWith('cat-') && !category.id.startsWith('custom-')) {
           await supabase.from('categories').update(payload).eq('id', category.id);
@@ -82,23 +83,43 @@ export class GameService {
     }
   }
 
-  // Seed initial questions to Supabase if DB is empty
+  // Seed initial categories & questions to Supabase
   static async seedInitialQuestionsToSupabase(): Promise<{ count: number; error?: string }> {
     if (!isSupabaseConfigured() || !supabase) {
       return { count: 0, error: 'Supabase tidak terkonfigurasi.' };
     }
 
     try {
-      // 1. Ensure categories exist in Supabase
+      // 1. Upsert categories into Supabase (try with theme_id first, fallback without theme_id if missing)
+      const catPayloads = INITIAL_CATEGORIES.map((c) => ({
+        name: c.name.trim(),
+        icon: c.icon || '🕌',
+        description: c.description || '',
+        theme_id: c.theme_id || 'islamic',
+      }));
+
+      const { error: catErr } = await supabase.from('categories').upsert(catPayloads, { onConflict: 'name' });
+      if (catErr && catErr.message.includes("theme_id")) {
+        // Fallback upsert categories without theme_id
+        const catPayloadsNoTheme = INITIAL_CATEGORIES.map((c) => ({
+          name: c.name.trim(),
+          icon: c.icon || '🕌',
+          description: c.description || '',
+        }));
+        await supabase.from('categories').upsert(catPayloadsNoTheme, { onConflict: 'name' });
+      }
+
+      // Fetch all updated categories from Supabase to construct catMap
       const { data: catData } = await supabase.from('categories').select('id, name');
       const catMap: Record<string, string> = {};
       if (catData) {
         catData.forEach((c: any) => { catMap[c.name.trim()] = c.id; });
       }
 
-      // 2. Prepare payload without category_name column
+      // 2. Prepare question payloads
       const payloads = INITIAL_QUESTIONS.map((q) => ({
         category_id: catMap[q.category_name?.trim() || ''] || null,
+        theme_id: q.theme_id || 'islamic',
         game_type: q.game_type || 'millionaire',
         difficulty: q.difficulty || 'medium',
         question_text: q.question_text,
@@ -114,6 +135,16 @@ export class GameService {
 
       const { data, error } = await supabase.from('questions').insert(payloads).select();
       if (error) {
+        if (error.message.includes("theme_id")) {
+          // If theme_id column does not exist yet in Supabase schema cache, retry without theme_id column
+          const payloadsNoTheme = payloads.map(({ theme_id, ...rest }) => rest);
+          const { data: data2, error: error2 } = await supabase.from('questions').insert(payloadsNoTheme).select();
+          if (error2) throw new Error(error2.message);
+          return {
+            count: data2 ? data2.length : 0,
+            error: '⚠️ Kolom `theme_id` belum ada di Supabase! Harap jalankan script migration di dokumen/schema.sql pada Supabase SQL Editor.',
+          };
+        }
         throw new Error(error.message);
       }
       return { count: data ? data.length : 0 };
@@ -123,37 +154,35 @@ export class GameService {
     }
   }
 
-  // Fetch Questions (Filtered by category and strictly by gameType: 'millionaire' | 'kahoot')
+  // Fetch Questions (Filtered by category, gameType, and strictly by themeId: 'islamic' | 'independence' | 'culture')
   static async getQuestions(
     categoryName?: string,
     count: number = 15,
-    gameType: 'millionaire' | 'kahoot' = 'millionaire'
+    gameType: 'millionaire' | 'kahoot' = 'millionaire',
+    themeId?: string
   ): Promise<Question[]> {
     let pool: Question[] = [];
+    const activeTheme = themeId || (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic') || 'islamic';
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        let query = supabase.from('questions').select('*, categories(name)').eq('game_type', gameType);
+        let query = supabase.from('questions').select('*, categories(name)');
         const { data, error } = await query;
         if (!error && data && data.length > 0) {
           let mapped = data.map((q: any) => ({
             ...q,
+            theme_id: q.theme_id || 'islamic',
             category_name: q.categories?.name || 'Campuran',
           }));
+          
+          // Filter strictly by active theme
+          mapped = mapped.filter((q: Question) => (q.theme_id || 'islamic') === activeTheme);
+
           if (categoryName && categoryName !== 'Campuran') {
             const filtered = mapped.filter((q: Question) => q.category_name === categoryName);
             if (filtered.length > 0) mapped = filtered;
           }
           pool = mapped;
-        } else {
-          // Fallback query all questions matching gameType
-          const { data: fallbackData } = await supabase.from('questions').select('*, categories(name)').eq('game_type', gameType);
-          if (fallbackData && fallbackData.length > 0) {
-            pool = fallbackData.map((q: any) => ({
-              ...q,
-              category_name: q.categories?.name || 'Campuran',
-            }));
-          }
         }
       } catch (e) {
         console.warn('Supabase fetch questions failed:', e);
@@ -162,7 +191,14 @@ export class GameService {
 
     // Fallback ONLY if Supabase returned 0 rows
     if (pool.length === 0) {
-      pool = INITIAL_QUESTIONS.filter((q) => (q.game_type || 'millionaire') === gameType);
+      pool = INITIAL_QUESTIONS.filter((q) => (q.theme_id || 'islamic') === activeTheme);
+      if (categoryName && categoryName !== 'Campuran') {
+        const filtered = pool.filter((q) => q.category_name === categoryName);
+        if (filtered.length > 0) pool = filtered;
+      }
+      if (pool.length === 0) {
+        pool = INITIAL_QUESTIONS.filter((q) => (q.theme_id || 'islamic') === activeTheme);
+      }
       if (pool.length === 0) pool = INITIAL_QUESTIONS;
     }
 
@@ -263,6 +299,7 @@ export class GameService {
 
     const payload: any = {
       category_id: catId,
+      theme_id: question.theme_id || 'islamic',
       game_type: question.game_type || 'millionaire',
       difficulty: question.difficulty || 'medium',
       question_text: question.question_text,
@@ -277,12 +314,19 @@ export class GameService {
     };
 
     if (isUUID) {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('questions')
         .update(payload)
         .eq('id', question.id)
         .select('*, categories(name)')
         .single();
+
+      if (error && error.message.includes('theme_id')) {
+        delete payload.theme_id;
+        const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*, categories(name)').single();
+        data = res.data;
+        error = res.error;
+      }
 
       if (error) {
         console.error('Supabase update question error:', error);
@@ -295,14 +339,24 @@ export class GameService {
         };
       }
     } else {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('questions')
         .insert([payload])
         .select('*, categories(name)')
         .single();
 
+      if (error && error.message.includes('theme_id')) {
+        delete payload.theme_id;
+        const res = await supabase.from('questions').insert([payload]).select('*, categories(name)').single();
+        data = res.data;
+        error = res.error;
+      }
+
       if (error) {
         console.error('Supabase insert question error:', error);
+        if (error.message.includes("schema cache") || error.message.includes("theme_id")) {
+          throw new Error(`⚠️ Kolom 'theme_id' belum ada di Supabase! Harap jalankan script migration di dokumen/schema.sql pada Supabase SQL Editor.`);
+        }
         throw new Error(`Gagal menambahkan soal: ${error.message}`);
       }
       if (data) {
@@ -451,62 +505,37 @@ export class GameService {
     return { success: false, error: 'Supabase is not configured' };
   }
 
-  // Get Leaderboard Top Entries (Global or Category-Filtered)
-  static async getLeaderboard(categoryName?: string, limit: number = 20): Promise<LeaderboardEntry[]> {
+  // Fetch Leaderboard for 5 Top Tabs: ALL (Global), ISLAMIC, INDEPENDENCE, CULTURE
+  static async getLeaderboard(tabMode: string = 'ALL', limit: number = 20): Promise<LeaderboardEntry[]> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        if (categoryName && categoryName !== 'Global' && categoryName !== 'Semua') {
-          const { data: sessionData, error: sessionErr } = await supabase
-            .from('game_sessions')
-            .select('*')
-            .eq('category_name', categoryName)
-            .order('total_score', { ascending: false })
-            .order('duration_seconds', { ascending: true })
-            .limit(limit * 2);
+        const { data: players, error } = await supabase.from('players').select('*');
 
-          if (!sessionErr && sessionData && sessionData.length > 0) {
-            const playerMap = new Map<string, any>();
-            for (const s of sessionData) {
-              const key = s.player_id || s.player_name;
-              if (!playerMap.has(key)) {
-                const totalQ = s.total_questions || 15;
-                const totalC = s.correct_answers || 0;
-                const acc = totalQ > 0 ? Math.round((totalC / totalQ) * 100) : 0;
-                playerMap.set(key, {
-                  id: s.id,
-                  player_id: s.player_id,
-                  player_name: s.player_name,
-                  player_avatar: s.player_avatar,
-                  border_frame: '/image/border/1.png',
-                  title_tag: categoryName,
-                  score: s.total_score,
-                  correct_count: totalC,
-                  total_questions: totalQ,
-                  total_games: 1,
-                  accuracy: acc,
-                  duration_seconds: s.duration_seconds || 0,
-                  event_tag: s.event_tag || 'KKN Wedomartani',
-                  created_at: s.created_at || new Date().toISOString(),
-                });
-              }
+        if (!error && players && players.length > 0) {
+          const mapped = players.map((player) => {
+            const amal = player.amal_points || 0;
+            const wawasan = player.wawasan_points || 0;
+            const budaya = player.budaya_points || 0;
+            const totalCombined = amal + wawasan + budaya;
+
+            let score = totalCombined;
+            let theme_id: any = 'islamic';
+
+            if (tabMode === 'ISLAMIC') {
+              score = amal;
+              theme_id = 'islamic';
+            } else if (tabMode === 'INDEPENDENCE') {
+              score = wawasan;
+              theme_id = 'independence';
+            } else if (tabMode === 'CULTURE') {
+              score = budaya;
+              theme_id = 'culture';
             }
-            return Array.from(playerMap.values()).slice(0, limit);
-          }
-        }
 
-        // Default Global Leaderboard: Fetch directly from players table
-        const { data, error } = await supabase
-          .from('players')
-          .select('*')
-          .order('amal_points', { ascending: false })
-          .order('total_correct', { ascending: false })
-          .limit(limit);
-
-        if (!error && data) {
-          return data.map((player) => {
             const totalQ = player.total_questions_answered || 0;
             const totalC = player.total_correct || 0;
             const acc = totalQ > 0 ? Math.round((totalC / totalQ) * 100) : 0;
+
             return {
               id: player.id,
               player_id: player.id,
@@ -514,7 +543,8 @@ export class GameService {
               player_avatar: player.avatar,
               border_frame: player.border_frame || player.border_color || '/image/border/1.png',
               title_tag: player.title_tag || 'Muslim Cerdas',
-              score: player.amal_points ?? 0,
+              score,
+              theme_id,
               correct_count: totalC,
               total_questions: totalQ,
               total_games: player.total_games ?? 0,
@@ -524,6 +554,14 @@ export class GameService {
               created_at: player.created_at || new Date().toISOString(),
             };
           });
+
+          // Sort by score DESC, total_correct DESC
+          mapped.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return b.correct_count - a.correct_count;
+          });
+
+          return mapped.slice(0, limit);
         }
       } catch (e) {
         console.warn('Supabase leaderboard fetch failed:', e);
@@ -533,8 +571,8 @@ export class GameService {
     return [];
   }
 
-  // Get active user's best score and rank (Global or Category)
-  static async getUserBestStats(playerId: string, categoryName?: string): Promise<{
+  // Get active user's best score and rank (Global or Theme Tab)
+  static async getUserBestStats(playerId: string, tabMode: string = 'ALL'): Promise<{
     rank: number;
     score: number;
     correct_count: number;
@@ -544,67 +582,42 @@ export class GameService {
   } | null> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        if (categoryName && categoryName !== 'Global' && categoryName !== 'Semua') {
-          const { data: userSession, error: sErr } = await supabase
-            .from('game_sessions')
-            .select('*')
-            .eq('player_id', playerId)
-            .eq('category_name', categoryName)
-            .order('total_score', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const { data: players, error: fetchErr } = await supabase.from('players').select('*');
 
-          if (!sErr && userSession) {
-            const { count } = await supabase
-              .from('game_sessions')
-              .select('*', { count: 'exact', head: true })
-              .eq('category_name', categoryName)
-              .gt('total_score', userSession.total_score);
+        if (!fetchErr && players && players.length > 0) {
+          const mapped = players.map((p) => {
+            const amal = p.amal_points || 0;
+            const wawasan = p.wawasan_points || 0;
+            const budaya = p.budaya_points || 0;
+            let score = amal + wawasan + budaya;
+            if (tabMode === 'ISLAMIC') score = amal;
+            else if (tabMode === 'INDEPENDENCE') score = wawasan;
+            else if (tabMode === 'CULTURE') score = budaya;
 
-            const totalQ = userSession.total_questions || 15;
-            const totalC = userSession.correct_answers || 0;
+            return { id: p.id, score, player: p };
+          });
+
+          mapped.sort((a, b) => b.score - a.score);
+          const rankIndex = mapped.findIndex((m) => m.id === playerId);
+          if (rankIndex !== -1) {
+            const userItem = mapped[rankIndex];
+            const p = userItem.player;
+            const totalQ = p.total_questions_answered || 0;
+            const totalC = p.total_correct || 0;
             const acc = totalQ > 0 ? Math.round((totalC / totalQ) * 100) : 0;
 
             return {
-              rank: (count ?? 0) + 1,
-              score: userSession.total_score,
+              rank: rankIndex + 1,
+              score: userItem.score,
               correct_count: totalC,
               total_questions: totalQ,
               accuracy: acc,
-              total_games: 1,
-            };
-          }
-        }
-
-        const { data: player, error: fetchErr } = await supabase
-          .from('players')
-          .select('*')
-          .eq('id', playerId)
-          .maybeSingle();
-
-        if (!fetchErr && player) {
-          const { count, error: countErr } = await supabase
-            .from('players')
-            .select('*', { count: 'exact', head: true })
-            .gt('amal_points', player.amal_points);
-
-          const totalQ = player.total_questions_answered || 0;
-          const totalC = player.total_correct || 0;
-          const acc = totalQ > 0 ? Math.round((totalC / totalQ) * 100) : 0;
-
-          if (!countErr) {
-            return {
-              rank: (count ?? 0) + 1,
-              score: player.amal_points ?? 0,
-              correct_count: totalC,
-              total_questions: totalQ,
-              accuracy: acc,
-              total_games: player.total_games ?? 0,
+              total_games: p.total_games ?? 0,
             };
           }
         }
       } catch (e) {
-        console.warn('Failed to fetch user rank from server:', e);
+        console.warn('GetUserBestStats error:', e);
       }
     }
     return null;
@@ -623,5 +636,50 @@ export class GameService {
         console.warn('Supabase reset failed:', e);
       }
     }
+  }
+
+  // Admin: Get all registered players
+  static async getAllPlayersAdmin(): Promise<any[]> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('players')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && data) return data;
+      } catch (e) {
+        console.warn('Error fetching players for admin:', e);
+      }
+    }
+    return [];
+  }
+
+  // Admin: Reset player points selectively by theme or all
+  static async resetPlayerPointsByTheme(themeTarget: 'islamic' | 'independence' | 'culture' | 'ALL'): Promise<boolean> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        if (themeTarget === 'independence') {
+          await supabase.from('players').update({ wawasan_points: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+        } else if (themeTarget === 'culture') {
+          await supabase.from('players').update({ budaya_points: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+        } else if (themeTarget === 'islamic') {
+          await supabase.from('players').update({ amal_points: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+        } else {
+          await supabase.from('players').update({
+            amal_points: 0,
+            wawasan_points: 0,
+            budaya_points: 0,
+            total_games: 0,
+            total_correct: 0,
+            total_questions_answered: 0,
+            xp: 0,
+          }).neq('id', '00000000-0000-0000-0000-000000000000');
+        }
+        return true;
+      } catch (e) {
+        console.warn('Error resetting player points by theme:', e);
+      }
+    }
+    return false;
   }
 }

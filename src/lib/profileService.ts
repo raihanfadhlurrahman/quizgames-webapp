@@ -15,6 +15,8 @@ export interface UserProfileData {
   level: number;
   xp: number;
   amal_points: number;
+  wawasan_points: number;
+  budaya_points: number;
   total_games: number;
   total_correct: number;
   total_questions_answered: number;
@@ -25,6 +27,11 @@ export interface UserProfileData {
 const LOCAL_STORAGE_PROFILE_KEY = 'islamic_millionaire_user_profile_v3';
 
 export class ProfileService {
+  // Helper: Get total combined points for a profile
+  static getTotalPoints(profile: UserProfileData): number {
+    return (profile.amal_points || 0) + (profile.wawasan_points || 0) + (profile.budaya_points || 0);
+  }
+
   // Get Current Real User Profile from Local Storage Cache
   static getProfile(): UserProfileData | null {
     if (typeof window === 'undefined') {
@@ -43,6 +50,10 @@ export class ProfileService {
               localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(parsed));
             } catch { }
           }
+          // Ensure new point fields default to 0 if missing from old cache
+          parsed.amal_points = parsed.amal_points ?? 0;
+          parsed.wawasan_points = parsed.wawasan_points ?? 0;
+          parsed.budaya_points = parsed.budaya_points ?? 0;
           return parsed;
         }
       } catch {
@@ -102,6 +113,8 @@ export class ProfileService {
           level: newProfile.level,
           xp: newProfile.xp,
           amal_points: newProfile.amal_points,
+          wawasan_points: newProfile.wawasan_points,
+          budaya_points: newProfile.budaya_points,
           total_games: newProfile.total_games,
           total_correct: newProfile.total_correct,
           total_questions_answered: newProfile.total_questions_answered,
@@ -129,6 +142,8 @@ export class ProfileService {
         level: player.level ?? 1,
         xp: player.xp ?? 0,
         amal_points: player.amal_points ?? 0,
+        wawasan_points: player.wawasan_points ?? 0,
+        budaya_points: player.budaya_points ?? 0,
         total_games: player.total_games ?? 0,
         total_correct: player.total_correct ?? 0,
         total_questions_answered: player.total_questions_answered ?? 0,
@@ -160,6 +175,9 @@ export class ProfileService {
       border_color: profile.border_color || profile.border_frame || current.border_color || '/image/border/1.png',
       bg_profile: profile.bg_profile || current.bg_profile || '/image/bgprofile/1.jpg',
       title_tag: profile.title_tag || current.title_tag || 'Muslim Cerdas',
+      amal_points: profile.amal_points ?? current.amal_points ?? 0,
+      wawasan_points: profile.wawasan_points ?? current.wawasan_points ?? 0,
+      budaya_points: profile.budaya_points ?? current.budaya_points ?? 0,
     };
 
     if (typeof window !== 'undefined') {
@@ -182,6 +200,8 @@ export class ProfileService {
           level: updated.level,
           xp: updated.xp,
           amal_points: updated.amal_points,
+          wawasan_points: updated.wawasan_points,
+          budaya_points: updated.budaya_points,
           total_games: updated.total_games,
           total_correct: updated.total_correct,
           total_questions_answered: updated.total_questions_answered,
@@ -211,7 +231,7 @@ export class ProfileService {
     return updated;
   }
 
-  // Helper: Calculate Level & Progress dynamically
+  // Helper: Calculate Level & Progress dynamically based on total combined points across all themes
   static calculateLevelInfo(totalPoints: number) {
     let level = 1;
     let pointsNeeded = 5000;
@@ -233,20 +253,39 @@ export class ProfileService {
     };
   }
 
-  // Accumulate Score & XP After Match
-  static async addGameResults(score: number, correctCount: number = 0, totalQuestions: number = 15): Promise<UserProfileData> {
+  // Accumulate Score & XP After Match by Theme
+  static async addGameResults(
+    score: number,
+    correctCount: number = 0,
+    totalQuestions: number = 15,
+    themeId: string = 'islamic'
+  ): Promise<UserProfileData> {
     const current = this.getProfile() || this.createDefaultProfile('');
-    const newAmalPoints = (current.amal_points || 0) + score;
+    let newAmal = current.amal_points || 0;
+    let newWawasan = current.wawasan_points || 0;
+    let newBudaya = current.budaya_points || 0;
+
+    if (themeId === 'independence') {
+      newWawasan += score;
+    } else if (themeId === 'culture') {
+      newBudaya += score;
+    } else {
+      newAmal += score;
+    }
+
+    const totalCombinedPoints = newAmal + newWawasan + newBudaya;
     const newXP = current.xp + score;
     const newTotalGames = current.total_games + 1;
     const newTotalCorrect = current.total_correct + correctCount;
     const newTotalQuestionsAnswered = current.total_questions_answered + totalQuestions;
 
-    const { level: newLevel } = this.calculateLevelInfo(newAmalPoints);
+    const { level: newLevel } = this.calculateLevelInfo(totalCombinedPoints);
 
     const updated: UserProfileData = {
       ...current,
-      amal_points: newAmalPoints,
+      amal_points: newAmal,
+      wawasan_points: newWawasan,
+      budaya_points: newBudaya,
       xp: newXP,
       level: newLevel,
       total_games: newTotalGames,
@@ -306,6 +345,8 @@ export class ProfileService {
       level: 1,
       xp: 0,
       amal_points: 0,
+      wawasan_points: 0,
+      budaya_points: 0,
       total_games: 0,
       total_correct: 0,
       total_questions_answered: 0,

@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Download, Award } from 'lucide-react';
 import { PlayerProfile } from '@/types/game';
+import { getThemeConfig, getThemeByCategory } from '@/lib/themeConfig';
 
 interface CertificateGeneratorProps {
   player: PlayerProfile;
@@ -24,6 +25,9 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const themeId = getThemeByCategory(player.category);
+    const themeConfig = getThemeConfig(themeId);
 
     canvas.width = 800;
     canvas.height = 500;
@@ -47,7 +51,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({
       }
 
       // Outer Gold Double Frame
-      ctx.strokeStyle = '#FDE68A';
+      ctx.strokeStyle = themeConfig.certificateColor;
       ctx.lineWidth = 4;
       ctx.strokeRect(20, 20, 760, 460);
 
@@ -69,18 +73,18 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({
 
       // Header Text
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#34D399';
+      ctx.fillStyle = themeConfig.certificateColor;
       ctx.font = 'bold 13px sans-serif';
       ctx.fillText(' KKN WEDOMARTANI • MEDIA SOSIALISASI EDULearning', 400, 65);
 
       // Certificate Title
       ctx.fillStyle = '#FBBF24';
-      ctx.font = 'bold 28px sans-serif';
-      ctx.fillText('SERTIFIKAT KELULUSAN', 400, 105);
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(themeConfig.certificateTitle, 400, 105);
 
       ctx.fillStyle = '#CBD5E1';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('ISLAMIC MILLIONAIRE QUIZ', 400, 128);
+      ctx.fillText(`KUIS INTERAKTIF TEMA ${themeConfig.name.toUpperCase()}`, 400, 128);
 
       // Divider Line
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
@@ -115,11 +119,11 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({
         400,
         275
       );
-      ctx.fillText('edukasi Islami dengan total skor', 400, 295);
+      ctx.fillText(`kategori ${player.category} dengan total skor`, 400, 295);
 
       // Score Badge Box
       ctx.fillStyle = 'rgba(11, 19, 43, 0.85)';
-      ctx.strokeStyle = '#FBBF24';
+      ctx.strokeStyle = themeConfig.certificateColor;
       ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.roundRect(280, 318, 240, 56, 16);
@@ -156,7 +160,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({
       ctx.fillText('Platform', 620, 420);
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('Islamic Millionaire Web App', 620, 438);
+      ctx.fillText('Interactive Quiz Web App', 620, 438);
     };
 
     bgImage.onload = renderCertificate;

@@ -29,7 +29,7 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
     if (room.question_ids && room.question_ids.length > 0) {
       GameService.getQuestionsByIds(room.question_ids).then(setQuestions);
     } else {
-      GameService.getQuestions(room.category_name || 'Campuran', room.total_questions || 10, 'kahoot').then(setQuestions);
+      GameService.getQuestions(room.category_name || 'Campuran', room.total_questions || 10, 'kahoot', room.theme_id || 'islamic').then(setQuestions);
     }
 
     // Subscribe to realtime room updates
@@ -408,7 +408,9 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                       <span className="font-black text-amber-300 text-base block">
                         {p.score.toLocaleString('id-ID')} Pt
                       </span>
-                      <span className="text-xs text-slate-400 font-semibold block">Poin Amal</span>
+                      <span className="text-xs text-slate-400 font-semibold block">
+                        {currentRoom.theme_id === 'independence' ? 'Poin Wawasan 🇲🇨' : currentRoom.theme_id === 'culture' ? 'Poin Budaya 🎭' : 'Poin Amal 💚'}
+                      </span>
                     </div>
                   </div>
                 );

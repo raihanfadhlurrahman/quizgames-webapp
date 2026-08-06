@@ -1,16 +1,29 @@
 import { Question, Category } from '@/types/game';
 
 export const INITIAL_CATEGORIES: Category[] = [
-  { id: 'cat-1', name: 'Rukun Islam', icon: '🕌', description: 'Pilar dasar ibadah Muslim' },
-  { id: 'cat-2', name: 'Shalat', icon: '🧎', description: 'Tata cara & syarat shalat' },
-  { id: 'cat-3', name: 'Al-Qur\'an', icon: '📖', description: 'Surah & kandungan Al-Qur\'an' },
-  { id: 'cat-4', name: 'Nabi dan Rasul', icon: '👳', description: 'Kisah para Utusan Allah' },
-  { id: 'cat-5', name: 'Aqidah', icon: '🕌', description: 'Keimanan dan tauhid' },
-  { id: 'cat-6', name: 'Doa Harian', icon: '🍽', description: 'Doa aktivitas sehari-hari' },
-  { id: 'cat-7', name: 'Ramadhan', icon: '🌙', description: 'Puasa & kemuliaan bulan Ramadhan' },
-  { id: 'cat-8', name: 'Akhlak', icon: '🤲', description: 'Sikap & perilaku terpuji' },
-  { id: 'cat-9', name: 'Adab', icon: '😊', description: 'Etika & tata krama Islami' },
-  { id: 'cat-10', name: 'Kehidupan Sehari-hari', icon: '👨‍👩‍👧', description: 'Penerapan nilai Islam' },
+  // Islamic Theme Categories
+  { id: 'cat-1', name: 'Rukun Islam', icon: '🕌', theme_id: 'islamic', description: 'Pilar dasar ibadah Muslim' },
+  { id: 'cat-2', name: 'Shalat', icon: '🧎', theme_id: 'islamic', description: 'Tata cara & syarat shalat' },
+  { id: 'cat-3', name: 'Al-Qur\'an', icon: '📖', theme_id: 'islamic', description: 'Surah & kandungan Al-Qur\'an' },
+  { id: 'cat-4', name: 'Nabi dan Rasul', icon: '👳', theme_id: 'islamic', description: 'Kisah para Utusan Allah' },
+  { id: 'cat-5', name: 'Aqidah', icon: '🕌', theme_id: 'islamic', description: 'Keimanan dan tauhid' },
+  { id: 'cat-6', name: 'Doa Harian', icon: '🍽', theme_id: 'islamic', description: 'Doa aktivitas sehari-hari' },
+  { id: 'cat-7', name: 'Ramadhan', icon: '🌙', theme_id: 'islamic', description: 'Puasa & kemuliaan bulan Ramadhan' },
+  { id: 'cat-8', name: 'Akhlak', icon: '🤲', theme_id: 'islamic', description: 'Sikap & perilaku terpuji' },
+  { id: 'cat-9', name: 'Adab', icon: '😊', theme_id: 'islamic', description: 'Etika & tata krama Islami' },
+  { id: 'cat-10', name: 'Kehidupan Sehari-hari', icon: '👨‍👩‍👧', theme_id: 'islamic', description: 'Penerapan nilai Islam' },
+
+  // Independence Theme Categories
+  { id: 'cat-11', name: 'Proklamasi & BPUPKI', icon: '📜', theme_id: 'independence', description: 'Peristiwa detik-detik Proklamasi RI' },
+  { id: 'cat-12', name: 'Pahlawan Nasional', icon: '🎖️', theme_id: 'independence', description: 'Kisah tokoh & pejuang kemerdekaan' },
+  { id: 'cat-13', name: 'Sejarah Perjuangan', icon: '⚔️', theme_id: 'independence', description: 'Pertempuran mempertahankan kemerdekaan RI' },
+  { id: 'cat-14', name: 'UUD 1945 & Pancasila', icon: '🦅', theme_id: 'independence', description: 'Dasar negara & lambang kebangsaan' },
+
+  // Culture Theme Categories
+  { id: 'cat-15', name: 'Rumah & Pakaian Adat', icon: '🏠', theme_id: 'culture', description: 'Arsitektur & busana tradisional Nusantara' },
+  { id: 'cat-16', name: 'Tarian & Alat Musik', icon: '🪕', theme_id: 'culture', description: 'Seni pertunjukan & instrumen tradisional' },
+  { id: 'cat-17', name: 'Kuliner Nusantara', icon: '🍛', theme_id: 'culture', description: 'Makanan & minuman khas daerah Indonesia' },
+  { id: 'cat-18', name: 'Cerita Rakyat & Kerajaan', icon: '📚', theme_id: 'culture', description: 'Legenda & sejarah kerajaan Nusantara' },
 ];
 
 export const INITIAL_QUESTIONS: Question[] = [
@@ -223,5 +236,158 @@ export const INITIAL_QUESTIONS: Question[] = [
     explanation: '5 Nabi Ulul Azmi: Nabi Nuh AS, Nabi Ibrahim AS, Nabi Musa AS, Nabi Isa AS, dan Nabi Muhammad SAW.',
     dalil: 'Maka bersabarlah kamu seperti orang-orang yang mempunyai keteguhan hati dari rasul-rasul (Ulul Azmi)... (QS. Al-Ahqaf: 35)',
     ustadz_hint: 'Beliau adalah nabi yang membuat bahtera/kapal besar saat banjir bandang.'
+  },
+  // Kemerdekaan (Independence) Questions
+  {
+    id: 'q-16',
+    category_name: 'Proklamasi & BPUPKI',
+    theme_id: 'independence',
+    difficulty: 'easy',
+    question_text: 'Pada tanggal berapakah Proklamasi Kemerdekaan Republik Indonesia dibacakan oleh Ir. Soekarno?',
+    option_a: '17 Agustus 1945',
+    option_b: '18 Agustus 1945',
+    option_c: '1 Juni 1945',
+    option_d: '28 Oktober 1928',
+    correct_option: 'A',
+    explanation: 'Proklamasi Kemerdekaan Indonesia dibacakan pada hari Jumat, 17 Agustus 1945 pukul 10.00 WIB di Jalan Pegangsaan Timur No. 56, Jakarta.',
+    dalil: 'Teks Proklamasi Kemerdekaan RI (17 Agustus 1945): "Kami bangsa Indonesia dengan ini menjatakan Kemerdekaan Indonesia."',
+    ustadz_hint: 'Tanggal ini diperingati sebagai Hari Ulang Tahun (HUT) Kemerdekaan Republik Indonesia setiap tahunnya.'
+  },
+  {
+    id: 'q-17',
+    category_name: 'Proklamasi & BPUPKI',
+    theme_id: 'independence',
+    difficulty: 'medium',
+    question_text: 'Siapakah tokoh pahlawan nasional yang menjahit Bendera Pusaka Sang Saka Merah Putih?',
+    option_a: 'Sayuti Melik',
+    option_b: 'Fatmawati',
+    option_c: 'R.A. Kartini',
+    option_d: 'Cut Nyak Dien',
+    correct_option: 'B',
+    explanation: 'Ibu Fatmawati (istri Ir. Soekarno) menjahit bendera Sang Saka Merah Putih yang dikibarkan saat proklamasi 17 Agustus 1945.',
+    dalil: 'Catatan Sejarah Museum Proklamasi: Ibu Fatmawati menjahit kain merah dan putih yang dibeli dari perwira Jepang (Chitoshi Yanagishima).',
+    ustadz_hint: 'Beliau adalah Ibu Negara pertama Indonesia.'
+  },
+  {
+    id: 'q-18',
+    category_name: 'Pahlawan Nasional',
+    theme_id: 'independence',
+    difficulty: 'easy',
+    question_text: 'Pahlawan nasional berjuluk "Ayam Jantan dari Timur" yang gigih melawan VOC Belanda berasal dari Gowa adalah...',
+    option_a: 'Pangeran Diponegoro',
+    option_b: 'Sultan Hasanuddin',
+    option_c: 'Pattimura',
+    option_d: 'Tuanku Imam Bonjol',
+    correct_option: 'B',
+    explanation: 'Sultan Hasanuddin dari Kesultanan Gowa Sulawesi Selatan dijuluki Ayam Jantan dari Timur karena keberaniannya melawan penjajah VOC.',
+    dalil: 'Surat Keputusan Presiden RI No. 087/TK/1973: Penetapan Sultan Hasanuddin sebagai Pahlawan Nasional Indonesia.',
+    ustadz_hint: 'Beliau memimpin kerajaan Islam terbesar di Sulawesi Selatan (Gowa-Tallo).'
+  },
+  {
+    id: 'q-19',
+    category_name: 'UUD 1945 & Pancasila',
+    theme_id: 'independence',
+    difficulty: 'easy',
+    question_text: 'Lambang Sila Ketiga Pancasila ("Persatuan Indonesia") adalah...',
+    option_a: 'Bintang Emas',
+    option_b: 'Rantai Emas',
+    option_c: 'Pohon Beringin',
+    option_d: 'Padi dan Kapas',
+    correct_option: 'C',
+    explanation: 'Sila ke-3 berbunyi Persatuan Indonesia dan dilambangkan oleh Pohon Beringin yang memiliki akar tunggang kokoh menopang kebhinekaan.',
+    dalil: 'Pasal 36A UUD 1945: Lambang Negara ialah Garuda Pancasila dengan semboyan Bhinneka Tunggal Ika.',
+    ustadz_hint: 'Pohon rindang ini menjadi simbol keteduhan dan tempat bernaung seluruh rakyat Indonesia.'
+  },
+  {
+    id: 'q-20',
+    category_name: 'Sejarah Perjuangan',
+    theme_id: 'independence',
+    difficulty: 'medium',
+    question_text: 'Pertempuran sengit 10 November 1945 di Surabaya dipelopori oleh orator ulung yang membakar semangat pemuda bernama...',
+    option_a: 'Bung Tomo (Sutomo)',
+    option_b: 'Jenderal Soedirman',
+    option_c: 'Mohammad Hatta',
+    option_d: 'Sutan Sjahrir',
+    correct_option: 'A',
+    explanation: 'Bung Tomo (Sutomo) menggelorakan takbir dan pidato berapi-api melalui radio untuk membakar semangat pemuda Surabaya menolak ultimatum Inggris.',
+    dalil: 'Pidato Radio Bung Tomo (10 Nov 1945): "Selama banteng-banteng Indonesia masih mempunyai darah merah... kita tidak akan menyerah!"',
+    ustadz_hint: 'Pekikan takbir "Allahu Akbar! Merdeka!" selalu digelorakan beliau di Radio BPRI.'
+  },
+
+  // Kebudayaan (Culture) Questions
+  {
+    id: 'q-21',
+    category_name: 'Rumah & Pakaian Adat',
+    theme_id: 'culture',
+    difficulty: 'easy',
+    question_text: 'Rumah adat khas Sumatera Barat yang memiliki atap berbentuk tanduk kerbau (Gonjong) disebut...',
+    option_a: 'Rumah Tongkonan',
+    option_b: 'Rumah Gadang',
+    option_c: 'Rumah Joglo',
+    option_d: 'Rumah Honai',
+    correct_option: 'B',
+    explanation: 'Rumah Gadang adalah rumah adat suku Minangkabau di Sumatera Barat dengan atap runcing melengkung seperti tanduk kerbau.',
+    dalil: 'Ensiklopedia Seni & Budaya Nusantara: Rumah Gadang mencerminkan garis keturunan matrilineal suku Minangkabau.',
+    ustadz_hint: 'Nama rumah adat ini berarti "Rumah Besar" dalam bahasa Minang.'
+  },
+  {
+    id: 'q-22',
+    category_name: 'Tarian & Alat Musik',
+    theme_id: 'culture',
+    difficulty: 'easy',
+    question_text: 'Alat musik tradisional khas Jawa dan Bali yang terdiri dari gong, saron, dan kendang dipukul secara bersamaan disebut...',
+    option_a: 'Angklung',
+    option_b: 'Gamelan',
+    option_c: 'Sasando',
+    option_d: 'Kolintang',
+    correct_option: 'B',
+    explanation: 'Gamelan adalah ansambel musik tradisional Indonesia yang didominasi instrumen musik pukul perunggu.',
+    dalil: 'UNESCO Warisan Budaya Takbenda (2021): Gamelan resmi diakui sebagai Intangible Cultural Heritage of Humanity.',
+    ustadz_hint: 'Ansambel musik ini dimainkan untuk mengiringi wayang kulit dan tarian tradisional.'
+  },
+  {
+    id: 'q-23',
+    category_name: 'Tarian & Alat Musik',
+    theme_id: 'culture',
+    difficulty: 'medium',
+    question_text: 'Alat musik petik khas dari Pulau Rote, Nusa Tenggara Timur yang terbuat dari daun lontar dinamakan...',
+    option_a: 'Sasando',
+    option_b: 'Tifa',
+    option_c: 'Sape',
+    option_d: 'Kecapi',
+    correct_option: 'A',
+    explanation: 'Sasando adalah alat musik petik tradisional dari Pulau Rote NTT yang bagian resonatornya terbuat dari anyaman daun lontar.',
+    dalil: 'Waris Budaya Kemdikbud RI: Sasando berasal dari kata "Sasandu" yang berarti alat yang berbunyi saat dipetik.',
+    ustadz_hint: 'Bentuknya sangat unik dengan wadah melingkar dari susunan daun lontar kering.'
+  },
+  {
+    id: 'q-24',
+    category_name: 'Kuliner Nusantara',
+    theme_id: 'culture',
+    difficulty: 'easy',
+    question_text: 'Makanan khas Minangkabau yang pernah dinobatkan sebagai salah satu makanan terlezat di dunia versi CNN adalah...',
+    option_a: 'Gudeg',
+    option_b: 'Rendang',
+    option_c: 'Pempek',
+    option_d: 'Rawon',
+    correct_option: 'B',
+    explanation: 'Rendang olahan daging sapi dengan bumbu rempah dan santan khas Padang terbukti diakui kelezatannya di tingkat internasional.',
+    dalil: 'Warisan Budaya Takbenda Indonesia (Kemdikbud): Tradisi Marandang (membuat rendang) melambangkan musyawarah dan kesabaran.',
+    ustadz_hint: 'Proses memasaknya memakan waktu berjam-jam hingga kuah santan menjadi mengering dan pekat cokelat kehitaman.'
+  },
+  {
+    id: 'q-25',
+    category_name: 'Rumah & Pakaian Adat',
+    theme_id: 'culture',
+    difficulty: 'medium',
+    question_text: 'Rumah adat berbentuk kerucut berbahan jerami dan kayu milik suku Dani di pegunungan Papua disebut...',
+    option_a: 'Rumah Honai',
+    option_b: 'Rumah Banjar',
+    option_c: 'Rumah Souraja',
+    option_d: 'Rumah Lamin',
+    correct_option: 'A',
+    explanation: 'Honai adalah rumah adat suku Dani Papua yang berbentuk bulat kerucut tanpa jendela untuk menahan udara dingin pegunungan.',
+    dalil: 'Arsitektur Nusantara Papua: Dinding melingkar dan atap jerami Honai dirancang menahan tiupan angin dingin di dataran tinggi Wamena.',
+    ustadz_hint: 'Atapnya menyerupai jamur raksasa dari tumpukan ilalang.'
   }
 ];

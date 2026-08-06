@@ -185,7 +185,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const totalQuestions = profile.total_questions_answered ?? 0;
   const totalCorrect = profile.total_correct ?? 0;
   const accuracyPercentage = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-  const levelInfo = ProfileService.calculateLevelInfo(profile.amal_points);
+  const totalCombinedPoints = ProfileService.getTotalPoints(profile);
+  const levelInfo = ProfileService.calculateLevelInfo(totalCombinedPoints);
   const currentXP = levelInfo.currentLevelPoints;
   const maxXP = levelInfo.nextLevelPoints;
   const xpPercentage = levelInfo.progressPercent;
@@ -252,21 +253,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             {/* LEFT COLUMN: AVATAR, PNG BORDER OVERLAY & TITLE BADGE */}
             <div className="md:col-span-5 flex flex-col items-center justify-center text-center">
               {/* Avatar Frame Container with PNG Border Overlay (Full Prominent Size) */}
-              <div className="relative w-26 h-26 sm:w-28 sm:h-28 md:w-30 md:h-30 flex items-center justify-center">
-                {/* Inner Circular Avatar Image */}
-                <div className="w-[74%] h-[74%] rounded-full bg-[#FEF3C7] flex items-center justify-center overflow-hidden shadow-inner border border-amber-300/80">
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 flex items-center justify-center">
+                {/* Inner Circular Avatar Image (Sits BEHIND border frame PNG) */}
+                <div className="w-[82%] h-[82%] rounded-full flex items-center justify-center overflow-hidden absolute z-0 -translate-y-1 sm:-translate-y-1.5">
                   {profile.avatar.startsWith('/') ? (
-                    <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover" />
+                    <img src={profile.avatar} alt={profile.name} className="w-full h-full object-cover object-center scale-105" />
                   ) : (
                     <span className="text-4xl sm:text-5xl">{profile.avatar}</span>
                   )}
                 </div>
 
-                {/* PNG Border Overlay Image (Extends Outwards) */}
+                {/* PNG Border Overlay Image (Extends Outwards over Avatar) */}
                 <img
                   src={currentBorderFrame}
                   alt="Bingkai Profile"
-                  className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)] object-contain pointer-events-none z-10 drop-shadow-md"
+                  className="absolute inset-0 w-full h-full object-contain object-center pointer-events-none z-10 scale-[1.25] drop-shadow-md"
                 />
 
                 {/* Camera Button (PNG Avatar Picker) */}
@@ -428,12 +429,34 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               </div>
 
-              {/* Amal Points Indicator */}
-              <div className="flex items-center gap-1.5 text-xs md:text-sm font-black text-emerald-900 bg-emerald-100/90 px-2.5 py-1 rounded-xl border border-emerald-300 shadow-xs w-fit">
-                <div className="w-4 h-4 rounded-full bg-[#10B981] text-white flex items-center justify-center text-[9px] shadow-xs">
-                  💚
+              {/* 3 Theme Points Indicators */}
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-emerald-100/90 border border-emerald-300 shadow-xs">
+                  <span className="text-[10px] font-black text-emerald-900 flex items-center gap-1">
+                    💚 Amal
+                  </span>
+                  <span className="text-xs font-black text-emerald-950">
+                    {(profile.amal_points || 0).toLocaleString('id-ID')}
+                  </span>
                 </div>
-                <span>{profile.amal_points.toLocaleString('id-ID')} Amal Point</span>
+
+                <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-red-100/90 border border-red-300 shadow-xs">
+                  <span className="text-[10px] font-black text-red-900 flex items-center gap-1">
+                    🇲🇨 Wawasan
+                  </span>
+                  <span className="text-xs font-black text-red-950">
+                    {(profile.wawasan_points || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-amber-100/90 border border-amber-300 shadow-xs">
+                  <span className="text-[10px] font-black text-amber-900 flex items-center gap-1">
+                    🎭 Budaya
+                  </span>
+                  <span className="text-xs font-black text-amber-950">
+                    {(profile.budaya_points || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
               </div>
 
               {/* Customizable Bio / Quran Quote Card */}
@@ -669,10 +692,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
             <div className="p-2 sm:p-2.5 bg-[#FFFDF3]/95 rounded-xl border border-purple-300 text-center space-y-0.5 shadow-xs backdrop-blur-xs">
-              <div className="text-base">⭐</div>
-              <div className="text-[9px] sm:text-[10px] font-bold text-slate-700">Poin Amal</div>
+              <div className="text-base">🌐</div>
+              <div className="text-[9px] sm:text-[10px] font-bold text-slate-700">Total Poin</div>
               <div className="text-sm sm:text-base font-black text-[#6B21A8]">
-                {profile.amal_points.toLocaleString('id-ID')}
+                {totalCombinedPoints.toLocaleString('id-ID')}
               </div>
             </div>
           </div>

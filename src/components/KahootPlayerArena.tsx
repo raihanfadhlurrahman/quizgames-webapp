@@ -25,6 +25,13 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
   const [selectedOption, setSelectedOption] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
   const [answeredQIndex, setAnsweredQIndex] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(20);
+  const [hasAwardedPoints, setHasAwardedPoints] = useState<boolean>(false);
+
+  const getPointLabel = (themeId?: string) => {
+    if (themeId === 'independence') return 'Poin Wawasan 🇲🇨';
+    if (themeId === 'culture') return 'Poin Budaya 🎭';
+    return 'Poin Amal 💚';
+  };
 
   const handleLeaveRoom = async () => {
     if (confirm('Yakin ingin keluar dari kuis live ini?')) {
@@ -34,13 +41,32 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
     }
   };
 
+  // Find player's rank & entry in room
+  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+  const myRankIndex = sortedPlayers.findIndex((p) => p.player_id === userProfile.id);
+  const myPlayerEntry = myRankIndex !== -1 ? sortedPlayers[myRankIndex] : null;
+
+  // Automatically accumulate score & XP to profile when room finishes
+  useEffect(() => {
+    if (room.status === 'finished' && !hasAwardedPoints && myPlayerEntry && myPlayerEntry.score > 0) {
+      setHasAwardedPoints(true);
+      const activeTheme = room.theme_id || 'islamic';
+      ProfileService.addGameResults(
+        myPlayerEntry.score,
+        myPlayerEntry.correct_count || 0,
+        room.total_questions || questions.length || 10,
+        activeTheme
+      );
+    }
+  }, [room.status, myPlayerEntry, hasAwardedPoints, room.theme_id, room.total_questions, questions.length]);
+
   // Fetch questions & players on mount, then re-sync if room provides question_ids
   useEffect(() => {
     let broadcastChannel: any = null;
 
     const loadQuestions = async () => {
       // Fallback: load deterministically (same sort as operator)
-      const qs = await GameService.getQuestions(initialRoom.category_name || 'Campuran', initialRoom.total_questions || 10, 'kahoot');
+      const qs = await GameService.getQuestions(initialRoom.category_name || 'Campuran', initialRoom.total_questions || 10, 'kahoot', initialRoom.theme_id || 'islamic');
       setQuestions(qs);
     };
 
@@ -140,11 +166,6 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
     // Submit score increment to room
     await RoomService.submitRoomScore(room.id, userProfile.id, scoreAdd, isCorrect);
   };
-
-  // Find player's rank & entry in room
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-  const myRankIndex = sortedPlayers.findIndex((p) => p.player_id === userProfile.id);
-  const myPlayerEntry = myRankIndex !== -1 ? sortedPlayers[myRankIndex] : null;
 
   const currentBg = userProfile.bg_profile || '/image/bgprofile/1.jpg';
   const playerBorder = userProfile.border_frame || userProfile.border_color || '/image/border/1.png';
@@ -321,7 +342,7 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
               <div className="p-4 bg-emerald-500/20 border-2 border-emerald-400 rounded-3xl text-center space-y-1 shadow-xl">
                 <div className="text-3xl">🎉</div>
                 <h3 className="text-xl font-black text-emerald-400">JAWABAN BENAR!</h3>
-                <p className="text-xs text-emerald-200 font-bold">+1.000 Poin Amal Berhasil Didapatkan</p>
+                <p className="text-xs text-emerald-200 font-bold">+1.000 {getPointLabel(room.theme_id)} Berhasil Didapatkan</p>
               </div>
             ) : (
               <div className="p-4 bg-red-500/20 border-2 border-red-400 rounded-3xl text-center space-y-1 shadow-xl">
@@ -430,7 +451,7 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
                       <span className="font-black text-amber-300 text-sm block">
                         {p.score.toLocaleString('id-ID')} Pt
                       </span>
-                      <span className="text-[9.5px] text-slate-400 font-semibold block">Poin Amal</span>
+                      <span className="text-[9.5px] text-slate-400 font-semibold block">{getPointLabel(room.theme_id)}</span>
                     </div>
                   </div>
                 );
@@ -467,7 +488,7 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
                   {myRankIndex === 0 && '🥇 SELAMAT! Anda Adalah JUARA 1 KUIS! 🎉'}
                   {myRankIndex === 1 && '🥈 SELAMAT! Anda Raih JUARA 2 KUIS! 🎉'}
                   {myRankIndex === 2 && '🥉 SELAMAT! Anda Raih JUARA 3 KUIS! 🎉'}
-                  {myRankIndex > 2 && `Posisi Anda: Peringkat #${myRankIndex + 1} (${myPlayerEntry.score.toLocaleString('id-ID')} Poin Amal)`}
+                  {myRankIndex > 2 && `Posisi Anda: Peringkat #${myRankIndex + 1} (${myPlayerEntry.score.toLocaleString('id-ID')} ${getPointLabel(room.theme_id)})`}
                 </div>
               )}
             </div>
@@ -633,7 +654,7 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
                           {p.score.toLocaleString('id-ID')} Pt
                         </span>
                         <span className="text-[9.5px] text-amber-400/90 font-bold uppercase block">
-                          Poin Amal Akhir
+                          {getPointLabel(room.theme_id)}
                         </span>
                       </div>
                     </div>

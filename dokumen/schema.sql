@@ -1,5 +1,6 @@
 -- ==========================================
--- ISLAMIC MILLIONAIRE DATABASE SCHEMA (SUPABASE / POSTGRESQL)
+-- MULTI-THEME QUIZ DATABASE SCHEMA (SUPABASE / POSTGRESQL)
+-- Modes Supported: Islamic (🕌), Independence (🇮🇩), Culture (🎭)
 -- File Location: /dokumen/schema.sql
 -- Instructions: Copy and paste this script directly into your Supabase SQL Editor.
 -- ==========================================
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.categories (
     name VARCHAR(100) NOT NULL UNIQUE,
     icon VARCHAR(10) DEFAULT '🕌',
     description TEXT,
+    theme_id VARCHAR(50) DEFAULT 'islamic',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -25,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.questions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
     category_name VARCHAR(100) DEFAULT 'Campuran',
+    theme_id VARCHAR(50) DEFAULT 'islamic',
     game_type VARCHAR(20) DEFAULT 'millionaire' CHECK (game_type IN ('millionaire', 'kahoot')),
     difficulty VARCHAR(20) DEFAULT 'medium' CHECK (difficulty IN ('easy', 'medium', 'hard')),
     question_text TEXT NOT NULL,
@@ -41,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.questions (
 );
 
 -- ------------------------------------------
--- 3. PLAYERS / USER PROFILES TABLE (NEW)
+-- 3. PLAYERS / USER PROFILES TABLE
 -- ------------------------------------------
 CREATE TABLE IF NOT EXISTS public.players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -57,6 +60,8 @@ CREATE TABLE IF NOT EXISTS public.players (
     level INT DEFAULT 1,
     xp INT DEFAULT 0,
     amal_points INT DEFAULT 0,
+    wawasan_points INT DEFAULT 0,
+    budaya_points INT DEFAULT 0,
     total_games INT DEFAULT 0,
     total_correct INT DEFAULT 0,
     total_questions_answered INT DEFAULT 0,
@@ -64,7 +69,6 @@ CREATE TABLE IF NOT EXISTS public.players (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 
 -- ------------------------------------------
 -- 4. GAME SESSIONS & HISTORY
@@ -75,6 +79,7 @@ CREATE TABLE IF NOT EXISTS public.game_sessions (
     player_name VARCHAR(100) NOT NULL,
     player_avatar VARCHAR(255) DEFAULT '👦🏻',
     category_name VARCHAR(100) DEFAULT 'Campuran',
+    theme_id VARCHAR(50) DEFAULT 'islamic',
     mode VARCHAR(50) DEFAULT 'Classic Millionaire',
     total_questions INT DEFAULT 15,
     correct_answers INT DEFAULT 0,
@@ -94,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.leaderboard (
     session_id UUID REFERENCES public.game_sessions(id) ON DELETE CASCADE,
     player_name VARCHAR(100) NOT NULL,
     player_avatar VARCHAR(255) DEFAULT '👦🏻',
+    theme_id VARCHAR(50) DEFAULT 'islamic',
     score INT NOT NULL DEFAULT 0,
     correct_count INT NOT NULL DEFAULT 0,
     duration_seconds INT NOT NULL DEFAULT 0,
@@ -105,9 +111,13 @@ CREATE TABLE IF NOT EXISTS public.leaderboard (
 -- 6. INDEXES FOR PERFORMANCE
 -- ------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_questions_category ON public.questions(category_id);
+CREATE INDEX IF NOT EXISTS idx_questions_theme ON public.questions(theme_id);
+CREATE INDEX IF NOT EXISTS idx_categories_theme ON public.categories(theme_id);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_score ON public.leaderboard(score DESC, duration_seconds ASC);
 CREATE INDEX IF NOT EXISTS idx_game_sessions_created ON public.game_sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_players_amal ON public.players(amal_points DESC);
+CREATE INDEX IF NOT EXISTS idx_players_wawasan ON public.players(wawasan_points DESC);
+CREATE INDEX IF NOT EXISTS idx_players_budaya ON public.players(budaya_points DESC);
 
 -- ------------------------------------------
 -- 7. ROW LEVEL SECURITY (RLS) POLICIES
@@ -118,7 +128,6 @@ ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leaderboard ENABLE ROW LEVEL SECURITY;
 
--- Clean existing policies to prevent conflict errors
 DROP POLICY IF EXISTS "Allow public read categories" ON public.categories;
 DROP POLICY IF EXISTS "Allow admin all categories" ON public.categories;
 
@@ -128,9 +137,6 @@ DROP POLICY IF EXISTS "Allow admin all questions" ON public.questions;
 DROP POLICY IF EXISTS "Allow public read players" ON public.players;
 DROP POLICY IF EXISTS "Allow public insert players" ON public.players;
 DROP POLICY IF EXISTS "Allow public update players" ON public.players;
-DROP POLICY IF EXISTS "Allow public select" ON public.players;
-DROP POLICY IF EXISTS "Allow individual insert" ON public.players;
-DROP POLICY IF EXISTS "Allow individual update" ON public.players;
 DROP POLICY IF EXISTS "Allow admin all players" ON public.players;
 
 DROP POLICY IF EXISTS "Allow public read game_sessions" ON public.game_sessions;
@@ -143,36 +149,28 @@ DROP POLICY IF EXISTS "Allow public insert leaderboard" ON public.leaderboard;
 DROP POLICY IF EXISTS "Allow public update leaderboard" ON public.leaderboard;
 DROP POLICY IF EXISTS "Allow admin all leaderboard" ON public.leaderboard;
 
--- Categories & Questions
 CREATE POLICY "Allow public read categories" ON public.categories FOR SELECT USING (true);
 CREATE POLICY "Allow public read questions" ON public.questions FOR SELECT USING (true);
 
--- Players
 CREATE POLICY "Allow public read players" ON public.players FOR SELECT USING (true);
 CREATE POLICY "Allow public insert players" ON public.players FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update players" ON public.players FOR UPDATE USING (true) WITH CHECK (true);
 
--- Game Sessions
 CREATE POLICY "Allow public read game_sessions" ON public.game_sessions FOR SELECT USING (true);
 CREATE POLICY "Allow public insert game_sessions" ON public.game_sessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update game_sessions" ON public.game_sessions FOR UPDATE USING (true) WITH CHECK (true);
 
--- Leaderboard
 CREATE POLICY "Allow public read leaderboard" ON public.leaderboard FOR SELECT USING (true);
 CREATE POLICY "Allow public insert leaderboard" ON public.leaderboard FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update leaderboard" ON public.leaderboard FOR UPDATE USING (true) WITH CHECK (true);
 
--- Admin Override
 CREATE POLICY "Allow admin all categories" ON public.categories FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all questions" ON public.questions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all players" ON public.players FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all game_sessions" ON public.game_sessions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow admin all leaderboard" ON public.leaderboard FOR ALL USING (auth.role() = 'authenticated');
 
--- ------------------------------------------
--- 7.1 SUPABASE REALTIME PUBLICATION SETUP
--- ------------------------------------------
--- Enable Realtime broadcast for leaderboard table so connected clients get instant live updates
+-- Realtime publication for leaderboard
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
@@ -182,79 +180,47 @@ EXCEPTION
   WHEN OTHERS THEN NULL;
 END $$;
 
+-- ------------------------------------------
+-- 8. SEED CATEGORIES (3 TEMA)
+-- ------------------------------------------
+INSERT INTO public.categories (name, icon, description, theme_id) VALUES
+-- Mode Islami 🕌
+('Rukun Islam', '🕌', 'Pilar dasar pelaksanaan ibadah seorang Muslim', 'islamic'),
+('Shalat', '🧎', 'Tata cara, keutamaan, dan syarat sah shalat', 'islamic'),
+('Al-Qur''an', '📖', 'Pengetahuan ayat, surah, dan kandungan Al-Qur''an', 'islamic'),
+('Nabi dan Rasul', '👳', 'Kisah perjalanan para Nabi dan Rasul Allah', 'islamic'),
+('Aqidah', '🕌', 'Dasar-dasar keimanan dan keyakinan dalam Islam', 'islamic'),
+('Doa Harian', '🍽', 'Doa-doa pendek untuk aktivitas sehari-hari', 'islamic'),
+('Ramadhan', '🌙', 'Puasa, keutamaan, dan ibadah di bulan Ramadhan', 'islamic'),
+('Akhlak', '🤲', 'Sikap, perilaku, dan kebiasaan terpuji', 'islamic'),
+('Adab', '😊', 'Etika Islami dalam berinteraksi sosial', 'islamic'),
+('Kehidupan Sehari-hari', '👨‍👩‍👧', 'Penerapan nilai Islam dalam hidup bermasyarakat', 'islamic'),
 
--- ==========================================
--- 8. SEED DATA (KATEGORI & SOAL ISLAMI)
--- ==========================================
+-- Mode Kemerdekaan 🇮🇩
+('Proklamasi & BPUPKI', '📜', 'Peristiwa bersejarah seputar 17 Agustus 1945', 'independence'),
+('Pahlawan Nasional', '🎖️', 'Biografi dan jasa para pahlawan kemerdekaan RI', 'independence'),
+('Sejarah Perjuangan', '⚔️', 'Pertempuran dan perundingan mempertahankan RI', 'independence'),
+('UUD 1945 & Pancasila', '🦅', 'Pengetahuan Garuda, Bendera, dan Lambang Negara', 'independence'),
 
-INSERT INTO public.categories (name, icon, description) VALUES
-('Aqidah', '🕌', 'Dasar-dasar keimanan dan keyakinan dalam Islam'),
-('Akhlak', '🤲', 'Sikap, perilaku, dan kebiasaan terpuji'),
-('Al-Qur''an', '📖', 'Pengetahuan ayat, surah, dan kandungan Al-Qur''an'),
-('Nabi dan Rasul', '👳', 'Kisah perjalanan para Nabi dan Rasul Allah'),
-('Ramadhan', '🌙', 'Puasa, keutamaan, dan ibadah di bulan Ramadhan'),
-('Rukun Islam', '🕌', 'Pilar dasar pelaksanaan ibadah seorang Muslim'),
-('Shalat', '🧎', 'Tata cara, keutamaan, dan syarat sah shalat'),
-('Doa Harian', '🍽', 'Doa-doa pendek untuk aktivitas sehari-hari'),
-('Adab', '😊', 'Etika Islami dalam berinteraksi sosial'),
-('Kehidupan Sehari-hari', '👨‍👩‍👧', 'Penerapan nilai Islam dalam hidup bermasyarakat')
-ON CONFLICT (name) DO NOTHING;
+-- Mode Kebudayaan 🎭
+('Rumah & Pakaian Adat', '🏠', 'Arsitektur dan pakaian adat warisan leluhur', 'culture'),
+('Tarian & Alat Musik', '🪕', 'Alat musik daerah dan tarian tradisional 38 provinsi', 'culture'),
+('Kuliner Nusantara', '🍛', 'Makanan khas daerah dari Sabang sampai Merauke', 'culture'),
+('Cerita Rakyat & Kerajaan', '📚', 'Legenda dan sejarah kerajaan Nusantara', 'culture')
+ON CONFLICT (name) DO UPDATE SET theme_id = EXCLUDED.theme_id;
 
-INSERT INTO public.questions 
-(category_id, difficulty, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, dalil, ustadz_hint) 
-VALUES
-(
-    (SELECT id FROM public.categories WHERE name = 'Rukun Islam' LIMIT 1),
-    'easy',
-    'Berapakah jumlah Rukun Islam yang wajib diyakini dan diamalkan oleh umat Muslim?',
-    '4 perkara',
-    '5 perkara',
-    '6 perkara',
-    '7 perkara',
-    'B',
-    'Rukun Islam terdiri dari 5 perkara: Syahadat, Shalat, Zakat, Puasa, dan Haji bagi yang mampu.',
-    'Dari Abu Abdurrahman Abdullah bin Umar bin Al-Khattab RA, Rasulullah SAW bersabda: "Islam dibangun di atas lima perkara..." (HR. Bukhari & Muslim)',
-    'Ingatlah rukun dasar yang diawali dengan Syahadat dan diakhiri dengan Ibadah Haji.'
-),
-(
-    (SELECT id FROM public.categories WHERE name = 'Shalat' LIMIT 1),
-    'easy',
-    'Shalat fardhu yang dikerjakan pada saat fajar terbit sebanyak 2 rakaat adalah...',
-    'Shalat Dzuhur',
-    'Shalat Maghrib',
-    'Shalat Subuh',
-    'Shalat Isya',
-    'C',
-    'Shalat Subuh dikerjakan sebanyak 2 rakaat di waktu fajar sebelum matahari terbit.',
-    'Dirikanlah shalat dari sesudah matahari tergelincir sampai gelap malam dan (dirikanlah pula shalat) Subuh... (QS. Al-Isra: 78)',
-    'Waktu shalat ini berada di awal pagi hari dan jumlah rakaatnya paling sedikit.'
-),
-(
-    (SELECT id FROM public.categories WHERE name = 'Al-Qur''an' LIMIT 1),
-    'easy',
-    'Surah apakah yang dijuluki sebagai "Ummul Qur''an" (Induk Al-Qur''an)?',
-    'Surah Al-Ikhlas',
-    'Surah Al-Fatihah',
-    'Surah Yasin',
-    'Surah Al-Baqarah',
-    'B',
-    'Surah Al-Fatihah dinamakan Ummul Qur''an karena memuat seluruh inti ajaran Al-Qur''an.',
-    'Rasulullah SAW bersabda: "Alhamdulillah (Al-Fatihah) adalah Ummul Qur''an dan Ummul Kitab." (HR. Tirmidzi)',
-    'Surah ini selalu kita baca di setiap rakaat shalat.'
-);
-
--- ==========================================
+-- ------------------------------------------
 -- 9. USER REGISTRATION TRIGGER (SUPABASE AUTH SYNC)
--- ==========================================
+-- ------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.players (id, name, avatar, level, xp, amal_points, total_games, role)
+  INSERT INTO public.players (id, name, avatar, level, xp, amal_points, wawasan_points, budaya_points, total_games, role)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'name', 'Pemain Baru'),
     '👦🏻',
-    1, 0, 0, 0,
+    1, 0, 0, 0, 0, 0,
     COALESCE(new.raw_user_meta_data->>'role', 'player')
   );
   RETURN new;
@@ -265,15 +231,16 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- ==========================================
+-- ------------------------------------------
 -- 10. MULTIPLAYER KAHOOT-STYLE QUIZ ROOMS
--- ==========================================
+-- ------------------------------------------
 CREATE TABLE IF NOT EXISTS public.quiz_rooms (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     room_code VARCHAR(6) UNIQUE NOT NULL,
     title VARCHAR(150) NOT NULL,
     category_name VARCHAR(100) DEFAULT 'Campuran',
-    status VARCHAR(20) DEFAULT 'waiting' CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished')),
+    theme_id VARCHAR(50) DEFAULT 'islamic',
+    status VARCHAR(20) DEFAULT 'waiting' CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress')),
     current_question_index INT DEFAULT 0,
     total_questions INT DEFAULT 10,
     created_by UUID REFERENCES public.players(id) ON DELETE SET NULL,
@@ -306,34 +273,33 @@ DROP POLICY IF EXISTS "Allow all access to quiz_room_players" ON public.quiz_roo
 CREATE POLICY "Allow all access to quiz_room_players" ON public.quiz_room_players FOR ALL USING (true);
 
 -- Enable Supabase Realtime for Quiz Rooms
-ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_room_players;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_rooms;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.quiz_room_players;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
 
 -- ==========================================
--- QUICK MIGRATION FIX FOR EXISTING DATABASES
--- Copy and run this in Supabase SQL Editor:
+-- 11. SAFE MIGRATION & SEEDER SCRIPT FOR EXISTING DATABASES
+-- Copy and run this section directly in your Supabase SQL Editor:
 -- ==========================================
-ALTER TABLE public.quiz_room_players DROP CONSTRAINT IF EXISTS quiz_room_players_player_id_fkey;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS wawasan_points INT DEFAULT 0;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS budaya_points INT DEFAULT 0;
+
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+ALTER TABLE public.game_sessions ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+ALTER TABLE public.quiz_rooms ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
 ALTER TABLE public.quiz_room_players ADD COLUMN IF NOT EXISTS bg_profile VARCHAR(255);
-ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS game_type VARCHAR(20) DEFAULT 'millionaire' CHECK (game_type IN ('millionaire', 'kahoot'));
 
--- Fix quiz_rooms status check constraint safely:
-UPDATE public.quiz_rooms SET status = 'waiting' WHERE status NOT IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress') OR status IS NULL;
 ALTER TABLE public.quiz_rooms DROP CONSTRAINT IF EXISTS quiz_rooms_status_check;
 ALTER TABLE public.quiz_rooms ADD CONSTRAINT quiz_rooms_status_check CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress'));
 
--- Fix quiz_room_players permissions & unique constraint safely:
-ALTER TABLE public.quiz_room_players DROP CONSTRAINT IF EXISTS quiz_room_players_player_id_fkey;
-ALTER TABLE public.players DROP CONSTRAINT IF EXISTS players_id_fkey;
-ALTER TABLE public.quiz_room_players ADD COLUMN IF NOT EXISTS bg_profile VARCHAR(255);
-
-ALTER TABLE public.quiz_room_players DROP CONSTRAINT IF EXISTS quiz_room_players_room_player_unique;
-ALTER TABLE public.quiz_room_players ADD CONSTRAINT quiz_room_players_room_player_unique UNIQUE (room_id, player_id);
-
-ALTER TABLE public.quiz_room_players ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow anon all on quiz_room_players" ON public.quiz_room_players;
-CREATE POLICY "Allow anon all on quiz_room_players" ON public.quiz_room_players FOR ALL USING (true) WITH CHECK (true);
-
-
-
-
+-- Ensure existing default questions without theme_id get set to 'islamic'
+UPDATE public.questions SET theme_id = 'islamic' WHERE theme_id IS NULL;
+UPDATE public.categories SET theme_id = 'islamic' WHERE theme_id IS NULL;

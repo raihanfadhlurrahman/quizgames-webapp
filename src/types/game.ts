@@ -1,16 +1,19 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
+export type AppTheme = 'islamic' | 'independence' | 'culture';
 
 export interface Category {
   id: string;
   name: string;
   icon: string;
   description?: string;
+  theme_id?: AppTheme;
 }
 
 export interface Question {
   id: string;
   category_id?: string;
   category_name?: string;
+  theme_id?: AppTheme;
   game_type?: 'millionaire' | 'kahoot';
   difficulty: Difficulty;
   question_text: string;
@@ -36,6 +39,7 @@ export interface GameSessionResult {
   player_name: string;
   player_avatar: string;
   category_name: string;
+  theme_id?: AppTheme;
   mode: string;
   total_questions: number;
   correct_answers: number;
@@ -53,7 +57,11 @@ export interface LeaderboardEntry {
   player_avatar: string;
   border_frame?: string;
   title_tag?: string;
+  theme_id?: AppTheme;
   score: number;
+  amal_points?: number;
+  wawasan_points?: number;
+  budaya_points?: number;
   correct_count: number;
   total_questions?: number;
   total_games?: number;
@@ -68,6 +76,7 @@ export interface QuizRoom {
   room_code: string;
   title: string;
   category_name: string;
+  theme_id?: AppTheme;
   status: 'waiting' | 'question' | 'feedback' | 'standing' | 'finished';
   current_question_index: number;
   total_questions: number;
@@ -93,13 +102,14 @@ export interface QuizRoomPlayer {
 
 export type GameState = 'WELCOME' | 'SETUP' | 'PLAYING' | 'FEEDBACK' | 'SUMMARY' | 'LEADERBOARD';
 
-export type LeaderboardTab = 'MILLIONAIRE' | 'QUROOM';
+export type LeaderboardTab = 'ALL' | 'ISLAMIC' | 'INDEPENDENCE' | 'CULTURE' | 'QUROOM';
 
 export interface QuRoomSessionSummary {
   id: string;
   room_code: string;
   title: string;
   category_name: string;
+  theme_id?: AppTheme | string;
   status: string;
   total_questions: number;
   total_players: number;

@@ -79,8 +79,9 @@ export default function HomePage() {
     setFinalResult({ correctCount, wrongCount, totalScore, durationSeconds });
     setGameState('SUMMARY');
 
-    // Accumulate Poin Amal & XP to real profile
-    await ProfileService.addGameResults(totalScore, correctCount, questions.length);
+    // Accumulate Theme Poin & XP to real profile based on active theme
+    const activeTheme = (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic') || 'islamic';
+    await ProfileService.addGameResults(totalScore, correctCount, questions.length, activeTheme);
 
     const activeProfile = ProfileService.getProfile();
 
@@ -90,6 +91,7 @@ export default function HomePage() {
         player_name: activeProfile?.name || player.name,
         player_avatar: activeProfile?.avatar || player.avatar,
         category_name: player.category,
+        theme_id: activeTheme as any,
         mode: 'Classic Millionaire',
         total_questions: questions.length,
         correct_answers: correctCount,

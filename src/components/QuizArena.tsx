@@ -9,6 +9,7 @@ import { LadderPanel } from './LadderPanel';
 import { AnswerFeedbackModal } from './AnswerFeedbackModal';
 import { audioManager } from '@/lib/audioManager';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
+import { getThemeConfig, getThemeByCategory } from '@/lib/themeConfig';
 
 interface QuizArenaProps {
   player: PlayerProfile;
@@ -52,6 +53,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
 
   const [userProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
   const currentQuestion = questions[currentIndex];
+  const themeConfig = getThemeConfig(currentQuestion?.theme_id || getThemeByCategory(currentQuestion?.category_name));
 
   // Answer Handler Callback
   const handleAnswerSubmit = useCallback(
@@ -177,7 +179,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
 
           {/* Avatar with Dynamic PNG Border Overlay */}
           <div className="relative z-10 w-11 h-11 md:w-13 md:h-13 flex items-center justify-center flex-shrink-0">
-            <div className="w-[78%] h-[78%] rounded-full bg-[#FEF3C7] flex items-center justify-center overflow-hidden shadow-inner border border-amber-300">
+            <div className="w-[68%] h-[68%] rounded-full bg-[#FEF3C7] flex items-center justify-center overflow-hidden shadow-inner border border-amber-300">
               {player.avatar.startsWith('/') ? (
                 <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" />
               ) : (
@@ -187,7 +189,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
             <img
               src={userProfile.border_frame || userProfile.border_color || '/image/border/1.png'}
               alt="Bingkai"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-105"
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10 scale-125"
             />
           </div>
 
@@ -226,9 +228,9 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
           className="flex-1 flex justify-center max-w-[180px] sm:max-w-[240px] md:max-w-[280px] lg:max-w-[320px]"
         >
           <img
-            src="/image/logoarena.png"
-            alt="Islamic Millionaire Quiz Arena"
-            className="w-full h-auto object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.5)]"
+            src={themeConfig.logoArena || '/image/logoarena.png'}
+            alt={`${themeConfig.name} Quiz Arena Logo`}
+            className="w-full h-auto object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.5)] transition-all duration-500"
           />
         </motion.div>
 
@@ -380,7 +382,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
               </div>
             </motion.button>
 
-            {/* Tanya Ustadz Lifeline Button */}
+            {/* Hint Lifeline Button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -390,11 +392,11 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
                 lifelineUstadzUsed ? 'opacity-40 grayscale cursor-not-allowed' : ''
               }`}
             >
-              <div className="w-9 h-9 rounded-full bg-[#FEF3C7] border border-[#F59E0B] overflow-hidden flex-shrink-0">
-                <img src="/image/tanyaustadz.png" alt="Tanya Ustadz" className="w-full h-full object-cover" />
+              <div className="w-9 h-9 rounded-full bg-[#FEF3C7] border border-[#F59E0B] flex items-center justify-center text-xl flex-shrink-0">
+                {themeConfig.hintIcon}
               </div>
               <span className="text-white font-extrabold text-xs md:text-sm leading-tight text-left">
-                Tanya<br />Ustadz
+                {themeConfig.hintLabel}
               </span>
               <div className="absolute -top-2 -right-2 bg-[#FBBF24] text-[#78350F] rounded-full w-5.5 h-5.5 flex items-center justify-center font-black text-[11px] border-2 border-white shadow-md">
                 {lifelineUstadzUsed ? 0 : 1}
@@ -418,7 +420,7 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
         onNext={handleNextQuestion}
       />
 
-      {/* TANYA USTADZ MODAL WITH USTADZ IMAGE */}
+      {/* HINT MODAL WITH DYNAMIC THEME CONTENT */}
       <AnimatePresence>
         {showUstadzModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
@@ -435,16 +437,16 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Ustadz Avatar Image */}
-              <div className="w-24 h-24 rounded-full bg-[#FEF3C7] border-4 border-[#F59E0B] overflow-hidden mx-auto mb-3 shadow-lg">
-                <img src="/image/tanyaustadz.png" alt="Ustadz Virtual" className="w-full h-full object-cover" />
+              {/* Avatar Icon */}
+              <div className="w-20 h-20 rounded-full bg-[#FEF3C7] border-4 border-[#F59E0B] flex items-center justify-center text-4xl mx-auto mb-3 shadow-lg">
+                {themeConfig.hintIcon}
               </div>
 
-              <h3 className="text-xl font-extrabold text-[#78350F] mb-1">Nasihat Ustadz Virtual</h3>
-              <p className="text-xs text-amber-900 mb-4">Bismillah, berikut petunjuk untuk membantu kamu menjawab:</p>
+              <h3 className="text-xl font-extrabold text-[#78350F] mb-1">{themeConfig.hintLabel}</h3>
+              <p className="text-xs text-amber-900 mb-4">Berikut petunjuk khusus untuk membantu kamu menjawab:</p>
 
               <div className="bg-[#FEF3C7] p-4 rounded-2xl border border-[#F59E0B] text-[#78350F] text-xs font-semibold leading-relaxed italic mb-6">
-                "{currentQuestion.ustadz_hint || 'Fokus pada pilihan yang paling mencerminkan ajaran pokok Islam dan memiliki dalil yang shahih.'}"
+                "{currentQuestion.ustadz_hint || 'Perhatikan baik-baik petunjuk soal dan analisis kata kuncinya.'}"
               </div>
 
               <button

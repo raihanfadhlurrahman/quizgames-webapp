@@ -15,7 +15,8 @@ export class RoomService {
     categoryName: string = 'Campuran',
     totalQuestions: number = 10,
     createdBy?: string,
-    questionIds?: string[]
+    questionIds?: string[],
+    themeId: string = 'islamic'
   ): Promise<QuizRoom | null> {
     const pin = this.generatePin();
     
@@ -31,6 +32,7 @@ export class RoomService {
               room_code: pin,
               title: title.trim() || 'Kuis Live Sosialisasi KKN',
               category_name: categoryName,
+              theme_id: themeId || 'islamic',
               total_questions: actualTotalQuestions,
               status: 'waiting',
               current_question_index: 0,
@@ -59,6 +61,7 @@ export class RoomService {
       room_code: pin,
       title: title.trim() || 'Kuis Live Sosialisasi KKN',
       category_name: categoryName,
+      theme_id: themeId as any,
       status: 'waiting',
       current_question_index: 0,
       total_questions: actualTotalQuestions,
@@ -636,6 +639,7 @@ export class RoomService {
                 room_code: room.room_code,
                 title: room.title || 'Kuis Live Sosialisasi KKN',
                 category_name: room.category_name || 'Campuran',
+                theme_id: room.theme_id || 'islamic',
                 status: room.status || 'finished',
                 total_questions: room.total_questions || 10,
                 total_players: playerCount,
@@ -728,6 +732,7 @@ export class RoomService {
             room_code: roomData.room_code,
             title: roomData.title || 'Kuis Live Sosialisasi KKN',
             category_name: roomData.category_name || 'Campuran',
+            theme_id: roomData.theme_id || 'islamic',
             status: roomData.status || 'finished',
             total_questions: roomData.total_questions || 10,
             total_players: rankedPlayers.length,
@@ -800,5 +805,48 @@ export class RoomService {
     }
 
     return { session, participants };
+  }
+
+  // Admin: Fetch all rooms for admin control list
+  static async getAllRoomsAdmin(): Promise<QuizRoom[]> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('quiz_rooms')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && data) return data as QuizRoom[];
+      } catch (e) {
+        console.warn('Error fetching all rooms for admin:', e);
+      }
+    }
+    return [];
+  }
+
+  // Admin: Close an active room (set status finished)
+  static async closeRoomAdmin(roomId: string): Promise<boolean> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('quiz_rooms').update({ status: 'finished' }).eq('id', roomId);
+        return true;
+      } catch (e) {
+        console.warn('Error closing room:', e);
+      }
+    }
+    return false;
+  }
+
+  // Admin: Delete a room session permanently
+  static async deleteRoomAdmin(roomId: string): Promise<boolean> {
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        await supabase.from('quiz_room_players').delete().eq('room_id', roomId);
+        await supabase.from('quiz_rooms').delete().eq('id', roomId);
+        return true;
+      } catch (e) {
+        console.warn('Error deleting room:', e);
+      }
+    }
+    return false;
   }
 }
