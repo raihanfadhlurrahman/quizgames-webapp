@@ -32,6 +32,32 @@ export class ProfileService {
     return (profile.amal_points || 0) + (profile.wawasan_points || 0) + (profile.budaya_points || 0);
   }
 
+  // Helper: Get points info (value, label, icon) for specific active theme
+  static getThemePointsInfo(profile: UserProfileData, themeId: string = 'islamic') {
+    if (themeId === 'independence') {
+      return {
+        points: profile.wawasan_points || 0,
+        label: 'Wawasan',
+        icon: '🔴',
+        colorClass: 'text-red-600',
+      };
+    } else if (themeId === 'culture') {
+      return {
+        points: profile.budaya_points || 0,
+        label: 'Kebudayaan',
+        icon: '🎭',
+        colorClass: 'text-amber-700',
+      };
+    } else {
+      return {
+        points: profile.amal_points || 0,
+        label: 'Amal',
+        icon: '💚',
+        colorClass: 'text-[#047857]',
+      };
+    }
+  }
+
   // Get Current Real User Profile from Local Storage Cache
   static getProfile(): UserProfileData | null {
     if (typeof window === 'undefined') {

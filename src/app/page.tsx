@@ -16,6 +16,7 @@ import { ProfileService } from '@/lib/profileService';
 import { audioManager } from '@/lib/audioManager';
 import { AuthService } from '@/lib/authService';
 import { QuizRoom } from '@/types/game';
+import { getThemeConfig } from '@/lib/themeConfig';
 
 export default function HomePage() {
   const [gameState, setGameState] = useState<GameState>('WELCOME');
@@ -64,7 +65,8 @@ export default function HomePage() {
   const handleSetupComplete = async (profile: PlayerProfile) => {
     setPlayer(profile);
     setLoading(true);
-    const fetched = await GameService.getQuestions(profile.category, 15);
+    const activeTheme = (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic') || 'islamic';
+    const fetched = await GameService.getQuestions(profile.category, 15, 'millionaire', activeTheme);
     setQuestions(fetched);
     setLoading(false);
     setGameState('PLAYING');
@@ -169,34 +171,50 @@ export default function HomePage() {
       )}
 
       {/* COMPACT SUMMARY SCREEN FITTING VIEWPORT */}
-      {gameState === 'SUMMARY' && player && finalResult && (
-        <div
-          className="min-h-screen w-full p-3 md:p-6 flex items-center justify-center relative font-sans overflow-y-auto"
-          style={{
-            backgroundImage: `url('/image/backgroundSummary.jpg')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        >
-          {/* Subtle Dark Overlay */}
-          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      {gameState === 'SUMMARY' && player && finalResult && (() => {
+        const activeTheme = (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic') || 'islamic';
+        const themeConfig = getThemeConfig(activeTheme);
+        const summaryBgImage = activeTheme === 'independence'
+          ? '/image/backgroundSummary2.jpg'
+          : activeTheme === 'culture'
+          ? '/image/backgroundSummary3.png'
+          : '/image/backgroundSummary.jpg';
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-[#0B132B]/90 backdrop-blur-md max-w-3xl lg:max-w-4xl w-full p-4 sm:p-6 rounded-[32px] border-4 border-[#FDE68A]/60 shadow-2xl space-y-4 relative z-10 my-auto"
+        const questionCountText = questions.length > 0 ? questions.length : 15;
+        const themeText = activeTheme === 'independence'
+          ? 'Kuis Kemerdekaan & Kebangsaan'
+          : activeTheme === 'culture'
+          ? 'Kuis Kebudayaan Nusantara'
+          : 'edukasi Islami';
+
+        return (
+          <div
+            className="min-h-screen w-full p-3 md:p-6 flex items-center justify-center relative font-sans overflow-y-auto"
+            style={{
+              backgroundImage: `url('${summaryBgImage}')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
           >
-            {/* Header */}
-            <div className="text-center space-y-0.5">
-              <div className="text-3xl sm:text-4xl mb-1 animate-bounce">🎉</div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-wide">
-                Selamat, {player.name}!
-              </h2>
-              <p className="text-xs text-slate-300 font-semibold">
-                Kamu telah menyelesaikan 15 pertanyaan edukasi Islami
-              </p>
-            </div>
+            {/* Subtle Dark Overlay */}
+            <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="bg-[#0B132B]/90 backdrop-blur-md max-w-3xl lg:max-w-4xl w-full p-4 sm:p-6 rounded-[32px] border-4 border-[#FDE68A]/60 shadow-2xl space-y-4 relative z-10 my-auto"
+            >
+              {/* Header */}
+              <div className="text-center space-y-0.5">
+                <div className="text-3xl sm:text-4xl mb-1 animate-bounce">🎉</div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-wide">
+                  Selamat, {player.name}!
+                </h2>
+                <p className="text-xs text-slate-300 font-semibold">
+                  Kamu telah menyelesaikan {questionCountText} pertanyaan {themeText}
+                </p>
+              </div>
 
             {/* 4 STAT CARDS GRID */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
@@ -304,7 +322,8 @@ export default function HomePage() {
             </div>
           </motion.div>
         </div>
-      )}
+        );
+      })()}
 
       {/* SUMMARY LEADERBOARD POPUP MODAL */}
       <LeaderboardView

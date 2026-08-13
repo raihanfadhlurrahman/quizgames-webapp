@@ -150,18 +150,43 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
 
   if (!currentQuestion) return null;
 
+  const arenaBgImage = themeConfig.id === 'culture'
+    ? '/image/backgroundGame4.png'
+    : themeConfig.id === 'independence'
+    ? '/image/backgroundGame3.jpg'
+    : '/image/backgroundGame2.jpg';
+
+  const hintImg = themeConfig.id === 'culture'
+    ? '/image/tanyabudaya.png'
+    : themeConfig.id === 'independence'
+    ? '/image/tanyapejuang.png'
+    : '/image/tanyaustadz.png';
+
   return (
     <div
       className="min-h-screen w-full select-none flex flex-col justify-between p-3 sm:p-5 lg:p-6 overflow-hidden font-sans relative"
       style={{
-        backgroundImage: `url('/image/backgroundGame2.jpg')`,
+        backgroundImage: `url('${arenaBgImage}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
       }}
     >
-      {/* Dark Subtle Overlay */}
+      {/* Dark Subtle Overlay & Islamic Decorative Elements */}
       <div className="absolute inset-0 bg-black/15 pointer-events-none" />
+
+      {themeConfig.id === 'islamic' && (
+        <>
+          {/* Floating Lantern Left */}
+          <div className="absolute top-2 left-4 w-12 sm:w-16 h-20 sm:h-28 pointer-events-none opacity-85 z-0 animate-pulse">
+            <img src="/image/lenteraicon.png" alt="Lentera" className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(251,191,36,0.5)]" />
+          </div>
+          {/* Floating Lantern Right */}
+          <div className="absolute top-2 right-4 w-12 sm:w-16 h-20 sm:h-28 pointer-events-none opacity-85 z-0 animate-pulse" style={{ animationDelay: '1.5s' }}>
+            <img src="/image/lenteraicon.png" alt="Lentera" className="w-full h-full object-contain drop-shadow-[0_5px_15px_rgba(251,191,36,0.5)]" />
+          </div>
+        </>
+      )}
 
       {/* TOP HEADER BAR */}
       <header className="relative z-10 w-full max-w-6xl mx-auto flex items-center justify-between gap-3">
@@ -194,30 +219,42 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
           </div>
 
           <div className="relative z-10 space-y-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-white text-xs sm:text-sm md:text-base leading-none drop-shadow-sm">
-                {player.name}
-              </span>
-              <span className="bg-[#FBBF24] text-[#78350F] text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
-                <Star className="w-3 h-3 fill-current" />
-                Lv. {ProfileService.calculateLevelInfo(userProfile.amal_points + totalScore).level}
-              </span>
-            </div>
-            {userProfile.title_tag && (
-              <div className="text-[9px] font-bold text-amber-300 truncate max-w-[120px]">
-                {userProfile.title_tag}
-              </div>
-            )}
-            <div className="w-20 md:w-28 bg-slate-700 h-1.5 rounded-full overflow-hidden border border-slate-600">
-              <div
-                className="bg-[#10B981] h-full rounded-full transition-all duration-500"
-                style={{ width: `${ProfileService.calculateLevelInfo(userProfile.amal_points + totalScore).progressPercent}%` }}
-              />
-            </div>
-            <div className="flex items-center gap-1 text-[11px] md:text-xs font-bold text-[#34D399]">
-              <span>💚</span>
-              <span>{(userProfile.amal_points + totalScore).toLocaleString('id-ID')} Amal</span>
-            </div>
+            {(() => {
+              const activeThemeId = themeConfig.id || 'islamic';
+              const themePoints = ProfileService.getThemePointsInfo(userProfile, activeThemeId);
+              const currentTotalPoints = themePoints.points + totalScore;
+              const totalCombined = ProfileService.getTotalPoints(userProfile) + totalScore;
+              const levelInfo = ProfileService.calculateLevelInfo(totalCombined);
+
+              return (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-white text-xs sm:text-sm md:text-base leading-none drop-shadow-sm">
+                      {player.name}
+                    </span>
+                    <span className="bg-[#FBBF24] text-[#78350F] text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-sm">
+                      <Star className="w-3 h-3 fill-current" />
+                      Lv. {levelInfo.level}
+                    </span>
+                  </div>
+                  {userProfile.title_tag && (
+                    <div className="text-[9px] font-bold text-amber-300 truncate max-w-[120px]">
+                      {userProfile.title_tag}
+                    </div>
+                  )}
+                  <div className="w-20 md:w-28 bg-slate-700 h-1.5 rounded-full overflow-hidden border border-slate-600">
+                    <div
+                      className="bg-[#10B981] h-full rounded-full transition-all duration-500"
+                      style={{ width: `${levelInfo.progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 text-[11px] md:text-xs font-bold text-[#34D399]">
+                    <span>{themePoints.icon}</span>
+                    <span>{currentTotalPoints.toLocaleString('id-ID')} {themePoints.label}</span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -298,8 +335,18 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full bg-[#FFFDF3] border-4 border-[#FDE68A] rounded-3xl p-5 md:p-7 shadow-2xl text-[#1E293B] relative"
+            className={`w-full bg-[#FFFDF3] border-4 border-[#FDE68A] rounded-3xl p-5 md:p-7 shadow-2xl text-[#1E293B] relative ${
+              themeConfig.id === 'islamic' ? 'ring-2 ring-emerald-500/30 shadow-[0_10px_35px_rgba(16,185,129,0.18)]' : ''
+            }`}
           >
+            {themeConfig.id === 'islamic' && (
+              <div className="flex items-center justify-center mb-3">
+                <span className="text-[11px] font-black text-[#047857] bg-emerald-100/90 border border-emerald-300 px-3 py-0.5 rounded-full tracking-wide">
+                  ✨ Bismillahir-rahmanir-rahim ✨
+                </span>
+              </div>
+            )}
+
             {/* Question Text */}
             <h3 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-center text-[#1E293B] leading-relaxed mb-4">
               {currentQuestion.question_text}
@@ -392,8 +439,8 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
                 lifelineUstadzUsed ? 'opacity-40 grayscale cursor-not-allowed' : ''
               }`}
             >
-              <div className="w-9 h-9 rounded-full bg-[#FEF3C7] border border-[#F59E0B] flex items-center justify-center text-xl flex-shrink-0">
-                {themeConfig.hintIcon}
+              <div className="w-9 h-9 rounded-full bg-[#FEF3C7] border border-[#F59E0B] flex items-center justify-center overflow-hidden flex-shrink-0 p-0.5">
+                <img src={hintImg} alt={themeConfig.hintLabel} className="w-full h-full object-contain" />
               </div>
               <span className="text-white font-extrabold text-xs md:text-sm leading-tight text-left">
                 {themeConfig.hintLabel}
@@ -438,8 +485,8 @@ export const QuizArena: React.FC<QuizArenaProps> = ({
               </button>
 
               {/* Avatar Icon */}
-              <div className="w-20 h-20 rounded-full bg-[#FEF3C7] border-4 border-[#F59E0B] flex items-center justify-center text-4xl mx-auto mb-3 shadow-lg">
-                {themeConfig.hintIcon}
+              <div className="w-20 h-20 rounded-full bg-[#FEF3C7] border-4 border-[#F59E0B] flex items-center justify-center overflow-hidden mx-auto mb-3 shadow-lg p-1">
+                <img src={hintImg} alt={themeConfig.hintLabel} className="w-full h-full object-contain" />
               </div>
 
               <h3 className="text-xl font-extrabold text-[#78350F] mb-1">{themeConfig.hintLabel}</h3>

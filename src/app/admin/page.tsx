@@ -33,7 +33,7 @@ export default function AdminPage() {
   const [isRoomFormOpen, setIsRoomFormOpen] = useState<boolean>(false);
   const [newRoomTitle, setNewRoomTitle] = useState<string>('Kuis Live Sosialisasi KKN');
   const [newRoomTheme, setNewRoomTheme] = useState<'islamic' | 'independence' | 'culture'>('islamic');
-  const [newRoomCategory, setNewRoomCategory] = useState<string>('Campuran');
+  const [newRoomCategory, setNewRoomCategory] = useState<string>('Rukun Islam');
   const [roomQuestionSelectionMode, setRoomQuestionSelectionMode] = useState<'auto' | 'manual'>('auto');
   const [roomSelectedQuestionIds, setRoomSelectedQuestionIds] = useState<string[]>([]);
 
@@ -247,13 +247,13 @@ export default function AdminPage() {
   };
 
   const getFilteredCategoriesByTheme = (themeId?: string): string[] => {
-    if (!themeId) return ['Campuran'];
+    if (!themeId) return ['Rukun Islam'];
     const matching = categories
       .filter((c) => !c.theme_id || c.theme_id === themeId)
       .map((c) => c.name);
-    const defaults = DEFAULT_THEME_CATEGORIES[themeId] || ['Campuran'];
+    const defaults = DEFAULT_THEME_CATEGORIES[themeId] || ['Rukun Islam'];
     const combined = Array.from(new Set([...matching, ...defaults]));
-    return combined.length > 0 ? combined : ['Campuran'];
+    return combined.length > 0 ? combined : ['Rukun Islam'];
   };
 
   const handleOpenNewCategoryForm = () => {
@@ -1318,9 +1318,6 @@ export default function AdminPage() {
                               {c.icon || '🕌'} {c.name}
                             </option>
                           ))}
-                        <option value="Campuran">
-                          🌀 Campuran ({newRoomTheme === 'independence' ? 'Kemerdekaan' : newRoomTheme === 'culture' ? 'Kebudayaan' : 'Islami'})
-                        </option>
                       </select>
                     </div>
                   </div>

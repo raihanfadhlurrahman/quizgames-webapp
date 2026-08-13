@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Play, ArrowLeft, Star, Sparkles, BookOpen } from 'lucide-react';
-import { Category, PlayerProfile } from '@/types/game';
+import { Category, PlayerProfile, AppTheme } from '@/types/game';
 import { GameService } from '@/lib/gameService';
 import { ProfileService, UserProfileData } from '@/lib/profileService';
 import { audioManager } from '@/lib/audioManager';
@@ -16,20 +16,37 @@ interface SetupScreenProps {
 
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, onBack }) => {
   const [profile, setProfile] = useState<UserProfileData>(ProfileService.getProfileOrDefault());
-  const [selectedCategory, setSelectedCategory] = useState<string>('Campuran');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeThemeTab, setActiveThemeTab] = useState<'all' | 'islamic' | 'independence' | 'culture'>('all');
+  const [activeTheme, setActiveTheme] = useState<AppTheme>('islamic');
 
   useEffect(() => {
     const activeProf = ProfileService.getProfileOrDefault();
     setProfile(activeProf);
-    GameService.getCategories().then(setCategories);
-    // Sync default active theme tab from saved theme
-    const savedTheme = localStorage.getItem('app_theme');
+
+    // Sync active theme from saved theme selected in WelcomeScreen
+    const savedTheme = localStorage.getItem('app_theme') as AppTheme;
     if (savedTheme === 'independence' || savedTheme === 'culture' || savedTheme === 'islamic') {
-      setActiveThemeTab(savedTheme as any);
+      setActiveTheme(savedTheme);
     }
+
+    GameService.getCategories().then(setCategories);
   }, []);
+
+  const filteredCategories = categories.filter((cat) => {
+    if (cat.theme_id) return cat.theme_id === activeTheme;
+    return activeTheme === 'islamic'; // Default fallback for untagged categories
+  });
+
+  // Auto-select valid category whenever filtered categories list changes
+  useEffect(() => {
+    if (filteredCategories.length > 0) {
+      const isCurrentValid = filteredCategories.some((cat) => cat.name === selectedCategory);
+      if (!isCurrentValid) {
+        setSelectedCategory(filteredCategories[0].name);
+      }
+    }
+  }, [filteredCategories, selectedCategory]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,18 +55,11 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
     onGameSetupComplete({
       name: profile.name,
       avatar: profile.avatar,
-      category: selectedCategory,
+      category: selectedCategory || (filteredCategories[0]?.name ?? 'Rukun Islam'),
     });
   };
 
-  const filteredCategories = categories.filter((cat) => {
-    if (activeThemeTab === 'all') return true;
-    if (cat.theme_id) return cat.theme_id === activeThemeTab;
-    return activeThemeTab === 'islamic'; // Default fallback for untagged categories
-  });
-
-  const activeThemeId = activeThemeTab !== 'all' ? activeThemeTab : (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic');
-  const themeConfig = getThemeConfig(activeThemeId || 'islamic');
+  const themeConfig = getThemeConfig(activeTheme);
 
   return (
     <div
@@ -90,7 +100,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
         </button>
 
         {/* ACTIVE PLAYER COMPACT BADGE */}
-        <div className="mt-2 mb-6 bg-[#FEF3C7]/80 border border-[#F59E0B] rounded-2xl p-3 flex items-center justify-between shadow-sm">
+        <div className="mt-2 mb-4 bg-[#FEF3C7]/80 border border-[#F59E0B] rounded-2xl p-3 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-white border-2 border-[#F59E0B] flex items-center justify-center overflow-hidden shadow-inner flex-shrink-0">
               {profile.avatar.startsWith('/') ? (
@@ -115,86 +125,46 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
           </div>
 
           <div className="text-right">
-            <span className="text-xs md:text-sm font-black text-[#047857] block">
-              💚 {profile.amal_points.toLocaleString()} Amal
-            </span>
+            {(() => {
+              const pointsInfo = ProfileService.getThemePointsInfo(profile, activeTheme);
+              return (
+                <span className={`text-xs md:text-sm font-black block ${pointsInfo.colorClass}`}>
+                  {pointsInfo.icon} {pointsInfo.points.toLocaleString()} {pointsInfo.label}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ACTIVE THEME INFORMATION BANNER */}
+        <div className="mb-4 bg-amber-100/80 border border-amber-300/80 px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl">{themeConfig.icon}</span>
+            <div>
+              <span className="text-xs text-amber-900/70 font-semibold block leading-none">Tema Kuis Aktif:</span>
+              <span className="text-sm font-black text-[#78350F]">{themeConfig.name} ({themeConfig.subtitle})</span>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-amber-800 bg-amber-200/70 px-2.5 py-1 rounded-full hidden sm:inline-block">
+            Tema Berdasarkan Menu Utama
+          </span>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* CATEGORY SELECTION GRID */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <label className="text-xs md:text-sm font-extrabold text-[#78350F] uppercase tracking-wider flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-[#D97706]" />
                 <span>Pilih Kategori Kuis:</span>
               </label>
               <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                {selectedCategory}
+                {selectedCategory || 'Memilih...'}
               </span>
             </div>
 
-            {/* Theme Filter Pills */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {[
-                { id: 'all', label: 'Semua Kategori', icon: '✨' },
-                { id: 'islamic', label: 'Islami', icon: '🕌' },
-                { id: 'independence', label: 'Kemerdekaan', icon: '🇲🇨' },
-                { id: 'culture', label: 'Kebudayaan', icon: '🎭' },
-              ].map((tab) => {
-                const isActive = activeThemeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => {
-                      audioManager.playClick();
-                      setActiveThemeTab(tab.id as any);
-                    }}
-                    className={`px-3 py-1 rounded-full text-xs font-black transition cursor-pointer flex items-center gap-1 border ${
-                      isActive
-                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm scale-105'
-                        : 'bg-white/80 text-amber-900 border-amber-200 hover:bg-amber-100'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[340px] overflow-y-auto pr-1 p-1">
-              {/* Mixed Category Option */}
-              <button
-                type="button"
-                onClick={() => {
-                  audioManager.playClick();
-                  setSelectedCategory('Campuran');
-                }}
-                className={`p-3.5 rounded-2xl border-2 text-left flex items-center justify-between transition cursor-pointer ${
-                  selectedCategory === 'Campuran'
-                    ? 'bg-[#DCFCE7] border-[#22C55E] text-[#15803D] font-extrabold shadow-md ring-2 ring-[#22C55E]'
-                    : 'bg-white border-amber-200 hover:border-amber-400 text-[#78350F] font-bold hover:bg-amber-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-xl">
-                    🔀
-                  </div>
-                  <div>
-                    <span className="block text-sm font-extrabold">Campuran</span>
-                    <span className="text-[10px] text-amber-800 font-semibold">Semua Soal Kuis</span>
-                  </div>
-                </div>
-                {selectedCategory === 'Campuran' && (
-                  <div className="w-6 h-6 rounded-full bg-[#22C55E] text-white flex items-center justify-center">
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  </div>
-                )}
-              </button>
-
-              {/* Dynamic Database Categories */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[320px] overflow-y-auto pr-1 p-1">
+              {/* Dynamic Database Categories filtered by Active Theme */}
               {filteredCategories.map((cat) => {
                 const isSelected = selectedCategory === cat.name;
                 return (
@@ -213,12 +183,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
                   >
                     <div className="flex items-center gap-3 truncate">
                       <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-xl flex-shrink-0">
-                        {cat.icon || '🕌'}
+                        {cat.icon || themeConfig.icon || '🕌'}
                       </div>
                       <div className="truncate">
                         <span className="block text-sm font-extrabold truncate">{cat.name}</span>
                         <span className="text-[10px] text-amber-800 font-semibold truncate block">
-                          {cat.description || 'Pertanyaan Keislaman'}
+                          {cat.description || `Pertanyaan Kuis ${themeConfig.name}`}
                         </span>
                       </div>
                     </div>
@@ -241,7 +211,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onGameSetupComplete, o
             className="w-full py-4 rounded-2xl md:rounded-3xl green-btn-3d font-black text-lg md:text-xl flex items-center justify-center gap-3 transition cursor-pointer shadow-xl"
           >
             <Play className="w-6 h-6 fill-current text-white" />
-            <span>MASUK ARENA KUIS</span>
+            <span>MASUK ARENA KUIS ({themeConfig.name.toUpperCase()})</span>
           </motion.button>
         </form>
       </motion.div>

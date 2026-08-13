@@ -26,14 +26,20 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const themeId = getThemeByCategory(player.category);
-    const themeConfig = getThemeConfig(themeId);
+    const activeTheme = (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : '') || getThemeByCategory(player.category) || 'islamic';
+    const themeConfig = getThemeConfig(activeTheme);
 
     canvas.width = 800;
     canvas.height = 500;
 
+    const certificateBgImage = activeTheme === 'independence'
+      ? '/image/backgroundserti2.jpg'
+      : activeTheme === 'culture'
+      ? '/image/backgroundserti3.png'
+      : '/image/backgroundGame2.jpg';
+
     const bgImage = new Image();
-    bgImage.src = '/image/backgroundGame2.jpg';
+    bgImage.src = certificateBgImage;
 
     const renderCertificate = () => {
       // Draw background image
