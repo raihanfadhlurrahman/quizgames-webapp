@@ -1,4 +1,4 @@
-# 🕌 Islamic Quiz Games WebApp
+# 🕌 🇲🇨 🎭 Interactive Multi-Theme Quiz WebApp
 
 <div align="center">
 
@@ -8,62 +8,74 @@
   ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38bdf8?style=for-the-badge&logo=tailwind-css)
   ![License](https://img.shields.io/badge/License-MIT-gold?style=for-the-badge)
 
-  <h3>✨ Platform Web App Interactive Quiz Edukasi Islami KKN Wedomartani ✨</h3>
+  <h3>✨ Platform Web App Kuis Interaktif Edukatif 3-in-1 (Islami, Kemerdekaan, Kebudayaan) ✨</h3>
 
   <p align="center">
-    Aplikasi Web Kuis Edukatif Islami Modern dengan Mode <b>Who Wants to Be a Millionaire</b> (Solo) & <b>Quroom Live Realtime</b> (Multiplayer Event/Sosialisasi).
+    Aplikasi Web Kuis Edukatif Modern dengan Mode <b>Solo Player (Millionaire Ladder)</b> & <b>Multiplayer Event Live (Quroom Realtime)</b>.<br/>
+    Dilengkapi sistem <b>3 Multi-Tema Dinamis</b>, Manajemen Bank Soal CSV, Profil Player, Leaderboard, & Sertifikat Digital.
   </p>
 
   <br />
-  <img src="image/preview.png" alt="Preview Aplikasi" width="100%" style="border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" />
+  <img src="public/image/preview.png" alt="Preview Aplikasi" width="100%" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);" />
 
 </div>
 
 ---
 
-## 🌟 Fitur Utama (Key Features)
+## 🎨 Preview & 3 Tema Utama (Multi-Theme System)
 
-### 🏆 1. Mode Classic Millionaire (Solo Player)
-- 🪜 **15 Tingkat Tangga Hadiah & Poin**: Dari level 1 (100 Poin) hingga Puncak Rp 1 Miliar Poin.
-- 💡 **3 Lifeline Bantuan Interaktif**:
-  - `50:50` — Menghilangkan 2 pilihan jawaban salah secara acak.
-  - `Tanya Ustadz` — Petunjuk khusus dari ustadz sesuai pembahasan soal.
-  - `Pilihan Jemaah` — Persentase suara jemaah secara statistik.
-- 📖 **Dalil & Penjelasan Edukatif**: Setiap selesai menjawab, tampil dalil Al-Qur'an/Hadits & penjelasan edukatif Islami.
-- 🎵 **Audio & Sound Effects**: Suara latar khas Millionaire, efek jawaban benar/salah, serta ketegangan timer.
+Aplikasi ini memiliki **3 Tema Visual & Konten Khusus** yang dapat berganti secara otomatis sesuai kategori soal atau dipilih secara manual oleh pengguna:
+
+| Tema | Branding & Logo | Background Utama | Lifeline Bantuan Khusus | Jenis Sertifikat Digital |
+| :---: | :---: | :---: | :---: | :---: |
+| **🕌 1. Islami** | <img src="public/image/logo.png" width="120" /> | <img src="public/image/mainmenubg1.jpg" width="160" style="border-radius: 6px;" /> | **Bantuan Ustadz 👳**<br/><img src="public/image/tanyaustadz.png" width="60" /> | Sertifikat Keagamaan Islami |
+| **🇲🇨 2. Kemerdekaan** | <img src="public/image/logomainmenu2.png" width="120" /> | <img src="public/image/mainmenubg2.jpeg" width="160" style="border-radius: 6px;" /> | **Petunjuk Pejuang 🎖️**<br/><img src="public/image/tanyapejuang.png" width="60" /> | Sertifikat Wawasan Kebangsaan |
+| **🎭 3. Kebudayaan** | <img src="public/image/logomainmenu3.png" width="120" /> | <img src="public/image/mainmenubg3.jpeg" width="160" style="border-radius: 6px;" /> | **Petunjuk Budayawan 🎭**<br/><img src="public/image/tanyabudaya.png" width="60" /> | Sertifikat Duta Budaya Nusantara |
 
 ---
 
-### 🎮 2. Mode Quroom Live Room (Multiplayer / Event Sosialisasi)
-- 📍 **Kode PIN Room 6-Digit**: Host/Operator membuat room kuis live dari Admin Panel.
-- 📺 **Proyektor / Display View**: Tampilan layar utama untuk proyektor acara sosialisasi KKN dengan timer visual & peringkat live.
-- 📱 **Pemain / Participant View**: Peserta dapat bergabung dengan PIN Room menggunakan HP masing-masing secara realtime.
-- ⚡ **Supabase Realtime Engine**: Sinkronisasi status room, pertanyaan, jawaban pemain, dan papan peringkat secara langsung tanpa refresh.
+## 🌟 Fitur Utama Lengkap (Key Features)
+
+### 🏆 1. Mode Solo Player (Classic Millionaire Quiz)
+- 🪜 **15 Level Tangga Poin**: Dari level 1 (100 Poin) hingga puncak 1 Miliar Poin.
+- 💡 **3 Lifeline Bantuan Interaktif**:
+  - `50:50` — Menghilangkan 2 opsi jawaban salah secara acak.
+  - `Tanya Ustadz / Pejuang / Budayawan` — Petunjuk khusus yang relevan dengan soal & tema aktif.
+  - `Pilihan Jemaah / Warga` — Persentase statistik suara publik.
+- 📖 **Dalil & Rujukan Edukatif**: Tampilan modal popup otomatis seusai menjawab yang berisi dalil Al-Qur'an/Hadits, Catatan Sejarah, atau Ensiklopedia Budaya.
+- 🎵 **Audio & Sound Effects Engine**: Efek suara ketegangan timer, jawaban benar/salah, serta musik latar Millionaire.
+
+---
+
+### 🎮 2. Mode Quroom Multiplayer Realtime (Event Sosialisasi / KKN)
+- 📍 **PIN Room 6-Digit**: Host/Operator membuat room kuis live dari Admin Panel.
+- 📺 **Proyektor / Display View**: Tampilan layar proyektor untuk acara sosialisasi KKN dengan timer visual, papan peringkat live, & break-down persentase jawaban.
+- 📱 **Participant Mobile View**: Peserta bergabung dengan PIN Room melalui HP masing-masing secara realtime.
+- ⚡ **Supabase Realtime Engine**: Sinkronisasi status room, soal, timer, dan skor pemain tanpa perlu refresh halaman.
 
 ---
 
 ### 👤 3. Sistem Profil & Kustomisasi Player
-- 🎖️ **Level, XP & Poin Amal**: Akumulasi poin dari setiap kuis yang dimainkan.
+- 🎖️ **Level, XP & Poin Akumulasi**: Poin tersimpan secara otomatis di database.
 - 🖼️ **Kustomisasi Profil**:
-  - Avatar Islami (Pilihan karakter laki-laki/perempuan).
-  - Bingkai Foto Profil (Border Frame Gold, Emerald, Diamond).
-  - Background Profil Keren.
-  - Bio & Kuotasi Islami (QS. Taha: 114).
-- 🏷️ **Title Tag**: Gelar kehormatan (misal: *Muslim Cerdas*, *Penuntut Ilmu*).
+  - Pilihan Avatar Karakter (Laki-laki / Perempuan).
+  - Bingkai Foto Profil (Border Frame Gold, Emerald, Diamond, Classic).
+  - Background Kartu Profil Keren.
+- 🏷️ **Gelar & Title Tag**: Gelar kehormatan sesuai akumulasi poin (misal: *Muslim Cerdas*, *Pejuang Bangsa*, *Duta Budaya*).
 
 ---
 
 ### 📚 4. Admin Panel & Bank Soal Cerdas
-- ➕ **CRUD Soal Lengkap**: Tambah, Edit, Hapus, dan Filter Soal berdasarkan kategori & mode permainan.
-- 📋 **Universal CSV / Excel Import**: Impor puluhan soal sekaligus dari Google Sheets / Excel atau fitur copas teks tabel.
-- 🔄 **Auto-Sync & Seed Supabase**: Tombol 1-klik untuk menyinkronkan 15 soal bawaan awal ke database Supabase.
-- 🏷️ **10+ Kategori Islami**: Rukun Islam, Shalat, Al-Qur'an, Nabi & Rasul, Aqidah, Doa Harian, Ramadhan, Akhlak, Adab, Kehidupan Sehari-hari.
+- ➕ **CRUD Soal Lengkap**: Tambah, Edit, Hapus, dan Filter soal berdasarkan kategori & tema (`islamic`, `independence`, `culture`).
+- 📋 **Impor / Ekspor CSV**: Impor puluhan soal sekaligus dari file Excel/CSV atau buat template soal melalui [`public/template_soal.csv`](public/template_soal.csv).
+- 🔄 **Auto-Sync 1-Klik**: Sinkronisasi awal 15 soal default bawaan ke database Supabase.
+- 📺 **Manajemen Room Live**: Kontrol jalannya permainan multiplayer (Mulai Kuis, Lanjut Soal, Akhiri Kuis).
 
 ---
 
-### 🏆 5. Leaderboard & Cetak Sertifikat
-- 🥇 **Papan Peringkat Global**: Peringkat pemain terbaik berdasarkan skor tertinggi dan kecepatan durasi.
-- 📜 **Digital Certificate Generator**: Pemain yang menyelesaikan kuis dapat mengunduh sertifikat digital apresiasi.
+### 📜 5. Leaderboard Global & Generator Sertifikat Digital
+- 🥇 **Papan Peringkat Global**: Menampilkan jajaran pemain terbaik berdasarkan akumulasi skor.
+- 🎓 **Cetak Sertifikat Digital**: Generator sertifikat otomatis sesuai tema kuis yang dimainkan lengkap dengan Nama Pemain, Skor Akhir, Tanggal, dan Cap Stempel Digital.
 
 ---
 
@@ -71,10 +83,10 @@
 
 - **Frontend Framework**: [Next.js 15](https://nextjs.org/) (App Router & Pages API)
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) dengan Animasi [Framer Motion](https://www.framer.com/motion/) & Glassmorphism Aesthetics
-- **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL, Row Level Security, & Realtime Subscriptions)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Audio Engine**: Web Audio API / Native Audio Player
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) dengan Glassmorphism Aesthetics & Micro-Animations
+- **Backend & Database**: [Supabase](https://supabase.com/) (PostgreSQL, Row Level Security, & Realtime WebSockets)
+- **Icons & UI**: [Lucide React](https://lucide.dev/) & [Canvas Confetti](https://www.npmjs.com/package/canvas-confetti)
+- **Audio Engine**: Native HTML5 Web Audio Engine
 
 ---
 
@@ -85,42 +97,35 @@
 - **npm** atau **yarn**
 - Akun **Supabase** (Proyek PostgreSQL)
 
-### 2. Kloning Repositori
+### 2. Kloning Repositori & Install Dependensi
 ```bash
 git clone https://github.com/raihanfadhlurrahman/quizgames-webapp.git
 cd minigames-webapp
-```
-
-### 3. Install Dependensi
-```bash
 npm install
 ```
 
-### 4. Konfigurasi Environment Variable (`.env.local`)
-Buat file `.env.local` di folder root project dan masukkan credentials Supabase Anda:
+### 3. Konfigurasi Environment Variable (`.env.local`)
+Buat file `.env.local` di root folder project:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://<your-supabase-project-id>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
-### 5. Jalankan Server Dev
+### 4. Jalankan Server Development
 ```bash
 npm run dev
 ```
-Buka browser di `http://localhost:3000`.
+Aplikasi dapat diakses di `http://localhost:3000`.
 
 ---
 
 ## 🗄️ Inisialisasi Database Supabase
 
 1. Buka **Supabase Dashboard** -> **SQL Editor**.
-2. Jalankan skrip tabel dari file **[`dokumen/schema.sql`](./dokumen/schema.sql)**.
-3. Jalankan kebijakan Row Level Security (RLS) dari file **[`dokumen/fix_questions_rls.sql`](./dokumen/fix_questions_rls.sql)**:
-   ```sql
-   ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
-   CREATE POLICY "Allow all access to questions" ON public.questions FOR ALL USING (true) WITH CHECK (true);
-   ```
-4. Masuk ke halaman **Admin Panel** (`http://localhost:3000/admin`), lalu tekan tombol **`Sync 15 Soal ke Supabase`** untuk me-load soal dasar ke database.
+2. Jalankan skrip DDL dari file **[`dokumen/schema.sql`](./dokumen/schema.sql)**.
+3. Jalankan kebijakan Row Level Security (RLS) dari file **[`dokumen/fix_questions_rls.sql`](./dokumen/fix_questions_rls.sql)**.
+4. Masuk ke halaman Admin Panel (`http://localhost:3000/admin`), lalu tekan tombol **`Sync 15 Soal ke Supabase`** untuk me-load bank soal awal ke database.
 
 ---
 
@@ -128,18 +133,21 @@ Buka browser di `http://localhost:3000`.
 
 ```text
 minigames-webapp/
-├── dokumen/                # Dokumentasi skema SQL, RLS, & template CSV
-├── public/                 # Aset gambar border, avatar, background, & audio
-├── scratch/                # Script pengujian internal
+├── dokumen/                # Buku panduan admin, schema SQL, RLS script
+├── public/                 # Assets gambar static (border, avatar, logo 3 tema, template_soal.csv)
 ├── src/
-│   ├── app/                # Page Routing Next.js (Home, Admin Panel)
-│   ├── components/         # Komponen UI (QuizArena, KahootPlayer, RoomHost, dll)
-│   ├── data/               # Data awal seed (Categories & Questions)
-│   ├── lib/                # Layanan Supabase (gameService, roomService, authService)
-│   ├── pages/api/          # API Handlers Next.js
+│   ├── app/                # Next.js App Router (Home /, Admin /admin)
+│   ├── components/         # Komponen UI (QuizArena, KahootPlayerArena, RoomHostView, ThemeSelectModal, dll)
+│   ├── data/               # Data rujukan static (avatars, borders, bgprofile, seedQuestions)
+│   ├── lib/                # Core Services (gameService, roomService, themeConfig, audioManager)
+│   ├── pages/api/          # API Route Next.js Backend
 │   └── types/              # TypeScript Types Definition
-├── .env.local.example      # Contoh file environment
-└── README.md
+├── .env.local              # Credential Supabase (local dev)
+├── .env.local.example      # Template konfigurasi environment
+├── next.config.js          # Konfigurasi Next.js
+├── tailwind.config.js      # Konfigurasi Styling Tailwind
+├── tsconfig.json           # Konfigurasi TypeScript
+└── README.md               # Dokumentasi utama project
 ```
 
 ---
@@ -148,4 +156,4 @@ minigames-webapp/
 
 Dibuat dengan ❤️ untuk Program Kerja **KKN Wedomartani**.
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Distributed under the **MIT License**.
