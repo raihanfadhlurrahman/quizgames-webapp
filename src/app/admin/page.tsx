@@ -78,6 +78,7 @@ export default function AdminPage() {
   const [categoryThemeFilter, setCategoryThemeFilter] = useState<'ALL' | 'islamic' | 'independence' | 'culture'>('ALL');
   const [isCatFormOpen, setIsCatFormOpen] = useState<boolean>(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatOldName, setEditingCatOldName] = useState<string>('');
   const [catFormData, setCatFormData] = useState<Omit<Category, 'id'>>({
     name: '',
     icon: '🕌',
@@ -92,6 +93,7 @@ export default function AdminPage() {
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
   const [guideActiveTab, setGuideActiveTab] = useState<'SOAL' | 'KATEGORI' | 'ROOMS' | 'PLAYERS'>('SOAL');
   const [guideSubTab, setGuideSubTab] = useState<number>(0);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   // Mounted state for SSR Hydration sync
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -273,6 +275,7 @@ export default function AdminPage() {
     const defaultTheme = categoryThemeFilter !== 'ALL' ? categoryThemeFilter : 'islamic';
     const defaultIcon = defaultTheme === 'independence' ? '🇲🇨' : defaultTheme === 'culture' ? '🎭' : '🕌';
     setEditingCatId(null);
+    setEditingCatOldName('');
     setCatFormData({
       name: '',
       icon: defaultIcon,
@@ -284,6 +287,7 @@ export default function AdminPage() {
 
   const handleEditCategory = (cat: Category) => {
     setEditingCatId(cat.id);
+    setEditingCatOldName(cat.name);
     setCatFormData({
       name: cat.name,
       icon: cat.icon || '🕌',
@@ -291,6 +295,9 @@ export default function AdminPage() {
       theme_id: cat.theme_id || 'islamic',
     });
     setIsCatFormOpen(true);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 350, behavior: 'smooth' });
+    }
   };
 
   const handleDeleteCategory = async (cat: Category) => {
@@ -305,13 +312,41 @@ export default function AdminPage() {
     e.preventDefault();
     if (!catFormData.name.trim()) return;
 
-    await GameService.saveCategory({
-      id: editingCatId || `cat-${Date.now()}`,
-      ...catFormData,
-    });
-    await loadCategories();
-    setIsCatFormOpen(false);
-    setMessage(editingCatId ? 'Kategori berhasil diperbarui!' : 'Kategori baru berhasil ditambahkan!');
+    try {
+      const savedCat = await GameService.saveCategory(
+        {
+          id: editingCatId || `cat-${Date.now()}`,
+          ...catFormData,
+        },
+        editingCatOldName
+      );
+
+      // Optimistically update categories React state immediately!
+      setCategories((prevCategories) => {
+        const targetId = editingCatId || savedCat.id;
+        const targetOldName = (editingCatOldName || '').toLowerCase().trim();
+        const idx = prevCategories.findIndex(
+          (c) => c.id === targetId || (targetOldName && c.name.toLowerCase().trim() === targetOldName)
+        );
+        if (idx >= 0) {
+          const updated = [...prevCategories];
+          updated[idx] = { ...updated[idx], ...savedCat };
+          return updated;
+        } else {
+          return [...prevCategories, savedCat];
+        }
+      });
+
+      await loadCategories();
+      await loadQuestions();
+      setIsCatFormOpen(false);
+      const wasEditing = !!editingCatId;
+      setEditingCatId(null);
+      setEditingCatOldName('');
+      setMessage(wasEditing ? 'Kategori berhasil diperbarui!' : 'Kategori baru berhasil ditambahkan!');
+    } catch (err: any) {
+      alert(`Gagal menyimpan kategori: ${err.message}`);
+    }
   };
 
   const handleCreateRoom = async (e: React.FormEvent) => {
@@ -363,8 +398,8 @@ export default function AdminPage() {
     // Auto-fix category_name if corrupted by shifted CSV columns (e.g. 'A', 'B', 'C', 'D', 'easy')
     let validCat = (q.category_name || 'Campuran').trim();
     const isInvalidCatName = ['A', 'B', 'C', 'D', 'easy', 'medium', 'hard'].includes(validCat);
-    if (isInvalidCatName || (validCat !== 'Campuran' && !categories.some(c => c.name === validCat))) {
-      validCat = categories[0]?.name || 'Campuran';
+    if (isInvalidCatName) {
+      validCat = 'Campuran';
     }
 
     // Auto-fix explanation if corrupted
@@ -389,6 +424,9 @@ export default function AdminPage() {
       ustadz_hint: q.ustadz_hint || '',
     });
     setIsFormOpen(true);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 350, behavior: 'smooth' });
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -396,7 +434,7 @@ export default function AdminPage() {
       try {
         await GameService.deleteQuestion(id);
         await loadQuestions();
-        setMessage('Soal berhasil dihapus secara permanen dari Supabase.');
+        setMessage('Soal berhasil dihapus secara permanen.');
       } catch (err: any) {
         alert(`Error saat menghapus soal: ${err.message}`);
       }
@@ -417,10 +455,26 @@ export default function AdminPage() {
         id: editingId || '',
       };
 
-      await GameService.saveQuestion(qToSave);
+      const saved = await GameService.saveQuestion(qToSave);
+
+      // Optimistically update questions list state immediately
+      setQuestions((prevQuestions) => {
+        const targetId = editingId || saved.id;
+        const idx = prevQuestions.findIndex((q) => q.id === targetId || (targetId && q.id === targetId));
+        if (idx >= 0) {
+          const updated = [...prevQuestions];
+          updated[idx] = { ...updated[idx], ...saved };
+          return updated;
+        } else {
+          return [saved, ...prevQuestions];
+        }
+      });
+
       await loadQuestions();
       setIsFormOpen(false);
-      setMessage(editingId ? 'Soal berhasil diperbarui di Database!' : 'Soal baru berhasil ditambahkan ke Database!');
+      const wasEditing = !!editingId;
+      setEditingId(null);
+      setMessage(wasEditing ? 'Soal berhasil diperbarui!' : 'Soal baru berhasil ditambahkan!');
     } catch (err: any) {
       alert(`Gagal menyimpan soal: ${err.message}`);
     }
@@ -491,6 +545,14 @@ export default function AdminPage() {
       window.location.reload();
     }
   };
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#F7F9F6] text-slate-800 flex items-center justify-center p-4 font-sans select-none" suppressHydrationWarning>
+        <div className="w-8 h-8 border-4 border-[#2D6A4F] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -1209,7 +1271,10 @@ export default function AdminPage() {
                   <div className="flex justify-end gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => setIsFormOpen(false)}
+                      onClick={() => {
+                        setIsFormOpen(false);
+                        setEditingId(null);
+                      }}
                       className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-200 transition"
                     >
                       Batal
@@ -1218,7 +1283,7 @@ export default function AdminPage() {
                       type="submit"
                       className="bg-[#2D6A4F] hover:bg-[#1B4332] px-6 py-2 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition"
                     >
-                      <Save className="w-4 h-4" /> Simpan Permanen
+                      <Save className="w-4 h-4" /> {editingId ? 'Simpan Perubahan' : 'Simpan Permanen'}
                     </button>
                   </div>
                 </form>
@@ -1475,7 +1540,11 @@ export default function AdminPage() {
                   <div className="flex justify-end gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() => setIsCatFormOpen(false)}
+                      onClick={() => {
+                        setIsCatFormOpen(false);
+                        setEditingCatId(null);
+                        setEditingCatOldName('');
+                      }}
                       className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-200 transition"
                     >
                       Batal
@@ -1484,7 +1553,7 @@ export default function AdminPage() {
                       type="submit"
                       className="bg-[#D97706] hover:bg-[#B45309] px-6 py-2 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-md transition"
                     >
-                      <Save className="w-4 h-4" /> Simpan Kategori
+                      <Save className="w-4 h-4" /> {editingCatId ? 'Simpan Perubahan' : 'Simpan Kategori'}
                     </button>
                   </div>
                 </form>
@@ -2386,6 +2455,29 @@ export default function AdminPage() {
                             <li>Tekan tombol <strong className="text-[#2D6A4F]">SIMPAN SOAL</strong>.</li>
                           </ol>
                         </div>
+
+                        {/* Screenshot Step 1 */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Screenshots Step 1: Form Tambah & Edit Soal Manual</span>
+                            </div>
+                            <span className="text-[10px] text-[#2D6A4F] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/tambahsoal1.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-emerald-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/tambahsoal1.png"
+                              alt="Panduan Tambah Soal Manual"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -2404,6 +2496,29 @@ export default function AdminPage() {
                             <li>Sistem akan otomatis mendeteksi kolom soal. Jika status berstatus <span className="text-[#2E7D32] font-black">Ready</span>, klik <strong className="text-[#2D6A4F]">SIMPAN SOAL KE DATABASE</strong>.</li>
                           </ol>
                         </div>
+
+                        {/* Screenshot Step 2 */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Screenshots Step 2: Form & Pratinjau Impor Massal CSV</span>
+                            </div>
+                            <span className="text-[10px] text-[#2D6A4F] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/tambahsoal2.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-emerald-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/tambahsoal2.png"
+                              alt="Panduan Impor Massal CSV"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -2421,23 +2536,73 @@ export default function AdminPage() {
                             <li><strong>Hapus Soal</strong>: Tekan tombol ikon tong sampah 🗑️ untuk menghapus soal.</li>
                           </ul>
                         </div>
+
+                        {/* Screenshot Step 3 */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Screenshots Step 3: Tabel Bank Soal, Filter Tema & Edit/Hapus</span>
+                            </div>
+                            <span className="text-[10px] text-[#2D6A4F] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/tambahsoal3.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-emerald-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/tambahsoal3.png"
+                              alt="Panduan Tabel Bank Soal"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
-                    {/* SCREENSHOT PLACEHOLDER CONTAINER FOR BANK SOAL */}
-                    <div className="p-4 border-2 border-dashed border-emerald-300 rounded-3xl bg-emerald-50/60 text-center space-y-3">
-                      <div className="flex items-center justify-center gap-2 text-emerald-800 font-black text-xs">
-                        <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                        <span>[SCREENSHOT PLACEHOLDER: BANK SOAL & IMPOR EXCEL]</span>
+                    {/* GALERI DESKTOP SCREENSHOTS OVERVIEW */}
+                    <div className="p-5 bg-gradient-to-r from-emerald-50 via-white to-emerald-50 border border-emerald-200 rounded-3xl space-y-4 shadow-xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2 text-emerald-900 font-black text-xs">
+                          <BookOpen className="w-4 h-4 text-emerald-600" />
+                          <span>Galeri Panduan Visual Bank Soal (Langkah 1 - 3)</span>
+                        </div>
+                        <span className="text-[11px] text-[#2D6A4F] font-bold">Pilih gambar untuk memperbesar</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium max-w-md mx-auto">
-                        Gambar screenshot layar manajemen soal dan form impor CSV akan ditayangkan di sini.
-                      </p>
-                      <img
-                        src="/image/mascot/ok.png"
-                        alt="Preview Guide Soal"
-                        className="w-24 h-24 object-contain mx-auto drop-shadow-md"
-                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div
+                          onClick={() => { setGuideSubTab(0); setPreviewImageUrl('/image/panduan/desktop/tambahsoal1.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-emerald-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/tambahsoal1.png" alt="Langkah 1" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">1. Form Tambah Soal</p>
+                        </div>
+
+                        <div
+                          onClick={() => { setGuideSubTab(1); setPreviewImageUrl('/image/panduan/desktop/tambahsoal2.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-emerald-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/tambahsoal2.png" alt="Langkah 2" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">2. Impor Massal CSV</p>
+                        </div>
+
+                        <div
+                          onClick={() => { setGuideSubTab(2); setPreviewImageUrl('/image/panduan/desktop/tambahsoal3.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-emerald-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/tambahsoal3.png" alt="Langkah 3" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">3. Bank Soal & Filter</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2463,49 +2628,117 @@ export default function AdminPage() {
                     </div>
 
                     {guideSubTab === 0 && (
-                      <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                        <h4 className="text-sm font-black text-[#92400E] flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-black flex items-center justify-center">1</span>
-                          Langkah Menambahkan Kategori Kuis Baru
-                        </h4>
-                        <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
-                          <li>Pindah ke tab menu <strong>🏷️ Kelola Kategori</strong> di navigasi sebelah kiri.</li>
-                          <li>Klik tombol <strong className="text-[#D97706]">+ Tambah Kategori Baru</strong>.</li>
-                          <li>Pilih <strong>Tema Kategori</strong> (Islamic Mode / Independence / Culture).</li>
-                          <li>Isi <strong>Nama Kategori</strong> (misal: <em>Sejarah Islam, Pakaian Adat, Rumah Adat</em>).</li>
-                          <li>Tentukan <strong>Ikon Emoji</strong> (misal: 🕌, 🇮🇩, 🎭, 📜, 🏆) dan deskripsi singkat.</li>
-                          <li>Klik <strong className="text-[#D97706]">SIMPAN KATEGORI</strong>.</li>
-                        </ol>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                          <h4 className="text-sm font-black text-[#92400E] flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-black flex items-center justify-center">1</span>
+                            Langkah Menambahkan Kategori Kuis Baru
+                          </h4>
+                          <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
+                            <li>Pindah ke tab menu <strong>🏷️ Kelola Kategori</strong> di navigasi sebelah kiri.</li>
+                            <li>Klik tombol <strong className="text-[#D97706]">+ Tambah Kategori Baru</strong>.</li>
+                            <li>Pilih <strong>Tema Kategori</strong> (Islamic Mode / Independence / Culture).</li>
+                            <li>Isi <strong>Nama Kategori</strong> (misal: <em>Sejarah Islam, Pakaian Adat, Rumah Adat</em>).</li>
+                            <li>Tentukan <strong>Ikon Emoji</strong> (misal: 🕌, 🇮🇩, 🎭, 📜, 🏆) dan deskripsi singkat.</li>
+                            <li>Klik <strong className="text-[#D97706]">SIMPAN KATEGORI</strong>.</li>
+                          </ol>
+                        </div>
+
+                        {/* Screenshot Step 1 Kategori */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Tangkapan Layar Step 1: Form Tambah Kategori & Emoji</span>
+                            </div>
+                            <span className="text-[10px] text-[#D97706] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/kategori1.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-amber-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/kategori1.png"
+                              alt="Panduan Tambah Kategori Baru"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
                     {guideSubTab === 1 && (
-                      <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                        <h4 className="text-sm font-black text-[#92400E] flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-black flex items-center justify-center">2</span>
-                          Mengedit & Mengatur Tampilan Kategori
-                        </h4>
-                        <ul className="list-disc list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
-                          <li>Kategori yang telah dibuat akan otomatis mengelompokkan kuis di beranda permainan peserta.</li>
-                          <li>Tekan tombol ✏️ Edit Kategori untuk memperbarui emoji atau nama topik kapan saja.</li>
-                        </ul>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                          <h4 className="text-sm font-black text-[#92400E] flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-[#FEF3C7] text-[#D97706] text-xs font-black flex items-center justify-center">2</span>
+                            Mengedit & Mengatur Tampilan Kategori
+                          </h4>
+                          <ul className="list-disc list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
+                            <li>Kategori yang telah dibuat akan otomatis mengelompokkan kuis di beranda permainan peserta.</li>
+                            <li>Tekan tombol ✏️ Edit Kategori untuk memperbarui emoji atau nama topik kapan saja.</li>
+                            <li>Tekan tombol 🗑️ Hapus Kategori untuk menghapus topik yang tidak digunakan.</li>
+                          </ul>
+                        </div>
+
+                        {/* Screenshot Step 2 Kategori */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Tangkapan Layar Step 2: Form Edit Kategori & Emoji</span>
+                            </div>
+                            <span className="text-[10px] text-[#D97706] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/kategori2.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-amber-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/kategori2.png"
+                              alt="Panduan Edit Kategori Kuis"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
-                    {/* SCREENSHOT PLACEHOLDER CONTAINER FOR KATEGORI */}
-                    <div className="p-4 border-2 border-dashed border-amber-300 rounded-3xl bg-amber-50/60 text-center space-y-3">
-                      <div className="flex items-center justify-center gap-2 text-amber-800 font-black text-xs">
-                        <Layers className="w-5 h-5 text-amber-600" />
-                        <span>[SCREENSHOT PLACEHOLDER: KELOLA KATEGORI]</span>
+                    {/* GALERI KATEGORI SCREENSHOTS OVERVIEW */}
+                    <div className="p-5 bg-gradient-to-r from-amber-50 via-white to-amber-50 border border-amber-200 rounded-3xl space-y-4 shadow-xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2 text-amber-900 font-black text-xs">
+                          <Layers className="w-4 h-4 text-amber-600" />
+                          <span>Galeri Panduan Visual Kelola Kategori (Langkah 1 - 2)</span>
+                        </div>
+                        <span className="text-[11px] text-[#D97706] font-bold">Pilih gambar untuk memperbesar</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium max-w-md mx-auto">
-                        Gambar screenshot kartu kategori dan form edit emoji akan ditayangkan di sini.
-                      </p>
-                      <img
-                        src="/image/mascot/angklungbudaya.png"
-                        alt="Preview Guide Kategori"
-                        className="w-24 h-24 object-contain mx-auto drop-shadow-md"
-                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div
+                          onClick={() => { setGuideSubTab(0); setPreviewImageUrl('/image/panduan/desktop/kategori1.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-amber-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/kategori1.png" alt="Langkah 1 Kategori" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">1. Tambah Kategori Baru</p>
+                        </div>
+
+                        <div
+                          onClick={() => { setGuideSubTab(1); setPreviewImageUrl('/image/panduan/desktop/kategori2.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-amber-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/kategori2.png" alt="Langkah 2 Kategori" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">2. Edit & Update Kategori</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2538,61 +2771,167 @@ export default function AdminPage() {
                     </div>
 
                     {guideSubTab === 0 && (
-                      <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                        <h4 className="text-sm font-black text-[#1E40AF] flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-black flex items-center justify-center">1</span>
-                          Cara Membuat Sesi Kuis Live Interaktif
-                        </h4>
-                        <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
-                          <li>Buka menu <strong>🎮 Sesi Room Live</strong> ➔ Klik <strong className="text-[#2563EB]">+ Buat Room Live</strong>.</li>
-                          <li>Pilih <strong>Tema Kuis</strong> dan atur durasi timer per soal (misal: 20 detik).</li>
-                          <li>Sistem akan menerbitkan <strong>Kode PIN 6-Digit</strong> (contoh: <code>742918</code>).</li>
-                        </ol>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                          <h4 className="text-sm font-black text-[#1E40AF] flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-black flex items-center justify-center">1</span>
+                            Cara Membuat Sesi Kuis Live Interaktif
+                          </h4>
+                          <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
+                            <li>Buka menu <strong>🎮 Sesi Room Live</strong> ➔ Klik <strong className="text-[#2563EB]">+ Buat Room Live</strong>.</li>
+                            <li>Isi <strong>Judul Acara / Room Kuis</strong> dan pilih <strong>Tema Room Kuis Live</strong> (Islami / Kemerdekaan / Kebudayaan).</li>
+                            <li>Pilih <strong>Kategori Soal</strong> serta <strong>Metode Pemilihan Soal</strong> (Acak 10 Soal atau Pilih Manual).</li>
+                            <li>Klik <strong className="text-[#2563EB]">+ Buat & Tampilkan Layar Proyektor</strong>.</li>
+                          </ol>
+                        </div>
+
+                        {/* Screenshot Step 1 Room */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Tangkapan Layar Step 1: Form Buat Room Live Kuis</span>
+                            </div>
+                            <span className="text-[10px] text-[#2563EB] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/room1.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-blue-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/room1.png"
+                              alt="Panduan Buat Room Live"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
                     {guideSubTab === 1 && (
-                      <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                        <h4 className="text-sm font-black text-[#1E40AF] flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-black flex items-center justify-center">2</span>
-                          Menayangkan Layar Utama / Proyektor (Host View)
-                        </h4>
-                        <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
-                          <li>Klik tombol <strong className="text-[#2563EB]">💻 Buka Layar Proyektor</strong>.</li>
-                          <li>Sambungkan layar laptop ke TV / Proyektor Utama di panggung kuis.</li>
-                          <li>Minta peserta membuka web kuis di HP masing-masing ➔ Masukkan PIN 6-digit & nama panggilan.</li>
-                          <li>Setelah semua peserta masuk di layar tunggu proyektor, klik <strong className="text-[#2563EB]">Mulai Pertandingan</strong>.</li>
-                        </ol>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                          <h4 className="text-sm font-black text-[#1E40AF] flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-black flex items-center justify-center">2</span>
+                            Menayangkan Layar Utama / Proyektor (Host View)
+                          </h4>
+                          <ol className="list-decimal list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
+                            <li>Sambungkan layar laptop ke TV / Proyektor Utama di panggung kuis.</li>
+                            <li>Layar proyektor akan menampilkan <strong>Kode PIN 6-Digit</strong> (contoh: <code>494 589</code>).</li>
+                            <li>Minta peserta membuka web kuis di HP masing-masing ➔ Masukkan PIN 6-digit & nama panggilan.</li>
+                            <li>Nama & avatar peserta yang terhubung akan muncul secara realtime di layar tunggu proyektor.</li>
+                            <li>Setelah semua peserta bergabung, Host menekan tombol hijau <strong className="text-[#2563EB]">MULAI KUIS SOSIALISASI</strong>.</li>
+                          </ol>
+                        </div>
+
+                        {/* Screenshot Step 2 Room */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Tangkapan Layar Step 2: Layar Proyektor PIN & Waiting Room</span>
+                            </div>
+                            <span className="text-[10px] text-[#2563EB] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/room2.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-blue-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/room2.png"
+                              alt="Panduan Layar Proyektor Waiting Room"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
                     {guideSubTab === 2 && (
-                      <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
-                        <h4 className="text-sm font-black text-[#1E40AF] flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-black flex items-center justify-center">3</span>
-                          Menampilkan Grafik Jawaban & Papan Skor Pemenang
-                        </h4>
-                        <ul className="list-disc list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
-                          <li>Setiap kali timer soal selesai, Layar Proyektor akan menampilkan grafik jawaban peserta secara realtime.</li>
-                          <li>Host dapat mengklik tombol <strong className="text-[#2563EB]">Soal Berikutnya</strong> hingga mengumumkan pemenang juara 1, 2, dan 3 di layar proyektor.</li>
-                        </ul>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                          <h4 className="text-sm font-black text-[#1E40AF] flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-[#DBEAFE] text-[#2563EB] text-xs font-black flex items-center justify-center">3</span>
+                            Alur Jalannya Pertandingan & Leaderboard Pemenang
+                          </h4>
+                          <ul className="list-disc list-inside space-y-2 text-xs text-slate-600 font-medium leading-relaxed">
+                            <li><strong>Sesi Pertanyaan</strong>: Tampilan soal, timer hitung mundur, & opsi jawaban A/B/C/D live.</li>
+                            <li><strong>Sesi Penjelasan & Dalil</strong>: Menampilkan kunci jawaban benar, penjelasan edukatif, dan referensi dalil.</li>
+                            <li><strong>Papan Peringkat Sementara</strong>: Menampilkan peringkat skor sementara peserta secara realtime.</li>
+                            <li><strong>Selebrasi Podium Juara</strong>: Menampilkan juara 1, 2, dan 3 di akhir soal kuis secara spektakuler.</li>
+                          </ul>
+                        </div>
+
+                        {/* Screenshot Step 3 Room */}
+                        <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-black text-slate-800">
+                              <span>📸 Tangkapan Layar Step 3: Alur Pertandingan, Penjelasan & Leaderboard</span>
+                            </div>
+                            <span className="text-[10px] text-[#2563EB] font-bold">🔍 Klik gambar untuk memperbesar</span>
+                          </div>
+                          <div
+                            onClick={() => setPreviewImageUrl('/image/panduan/desktop/room3.png')}
+                            className="relative rounded-2xl overflow-hidden border border-slate-200 group cursor-pointer hover:border-blue-500 transition shadow-xs bg-slate-100"
+                          >
+                            <img
+                              src="/image/panduan/desktop/room3.png"
+                              alt="Panduan Alur Pertandingan Room Live"
+                              className="w-full h-auto object-cover group-hover:scale-[1.01] transition duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-2">
+                              <span>🔍 Klik untuk Perbesar Tangkapan Layar</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
-                    {/* SCREENSHOT PLACEHOLDER CONTAINER FOR ROOM LIVE */}
-                    <div className="p-4 border-2 border-dashed border-blue-300 rounded-3xl bg-blue-50/60 text-center space-y-3">
-                      <div className="flex items-center justify-center gap-2 text-blue-800 font-black text-xs">
-                        <Radio className="w-5 h-5 text-blue-600" />
-                        <span>[SCREENSHOT PLACEHOLDER: SESI ROOM LIVE & PROYEKTOR HOST]</span>
+                    {/* GALERI ROOM LIVE SCREENSHOTS OVERVIEW */}
+                    <div className="p-5 bg-gradient-to-r from-blue-50 via-white to-blue-50 border border-blue-200 rounded-3xl space-y-4 shadow-xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2 text-blue-900 font-black text-xs">
+                          <Radio className="w-4 h-4 text-blue-600" />
+                          <span>Galeri Panduan Visual Room Live & Proyektor (Langkah 1 - 3)</span>
+                        </div>
+                        <span className="text-[11px] text-[#2563EB] font-bold">Pilih gambar untuk memperbesar</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-medium max-w-md mx-auto">
-                        Gambar screenshot layar proyektor host kuis dan PIN room akan ditayangkan di sini.
-                      </p>
-                      <img
-                        src="/image/mascot/banggamerdeka.png"
-                        alt="Preview Guide Room Live"
-                        className="w-24 h-24 object-contain mx-auto drop-shadow-md"
-                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div
+                          onClick={() => { setGuideSubTab(0); setPreviewImageUrl('/image/panduan/desktop/room1.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-blue-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/room1.png" alt="Langkah 1 Room" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">1. Form Buat Room</p>
+                        </div>
+
+                        <div
+                          onClick={() => { setGuideSubTab(1); setPreviewImageUrl('/image/panduan/desktop/room2.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-blue-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/room2.png" alt="Langkah 2 Room" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">2. Layar Proyektor PIN</p>
+                        </div>
+
+                        <div
+                          onClick={() => { setGuideSubTab(2); setPreviewImageUrl('/image/panduan/desktop/room3.png'); }}
+                          className="bg-white p-2.5 rounded-2xl border border-slate-200 hover:border-blue-500 transition cursor-pointer group shadow-2xs space-y-1.5"
+                        >
+                          <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video">
+                            <img src="/image/panduan/desktop/room3.png" alt="Langkah 3 Room" className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </div>
+                          <p className="text-[11px] font-black text-slate-800 text-center">3. Alur Pertandingan & Leaderboard</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2686,6 +3025,42 @@ export default function AdminPage() {
       {/* FULLSCREEN ADMIN HOST VIEW (PROJECTOR) */}
       {activeHostRoom && (
         <RoomHostView room={activeHostRoom} onClose={() => setActiveHostRoom(null)} />
+      )}
+
+      {/* FULLSCREEN GUIDE IMAGE ZOOM LIGHTBOX */}
+      {previewImageUrl && (
+        <div
+          onClick={() => setPreviewImageUrl(null)}
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out animate-fadeIn"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative max-w-5xl max-h-[92vh] w-full flex flex-col items-center justify-center space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between text-white px-2">
+              <span className="text-xs font-bold bg-white/20 backdrop-blur-md px-3 py-1 rounded-full">
+                🔍 Pratinjau Tangkapan Layar Panduan Admin
+              </span>
+              <button
+                onClick={() => setPreviewImageUrl(null)}
+                className="bg-white/20 hover:bg-white/40 text-white rounded-full p-2 font-black text-sm flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="w-full max-h-[85vh] flex items-center justify-center overflow-hidden rounded-2xl border border-white/20 shadow-2xl bg-black/40">
+              <img
+                src={previewImageUrl}
+                alt="Pratinjau Screenshot Panduan"
+                className="max-h-[83vh] w-auto max-w-full object-contain rounded-xl"
+              />
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

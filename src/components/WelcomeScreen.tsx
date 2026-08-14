@@ -115,6 +115,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div
+      suppressHydrationWarning
       className="relative w-full h-screen max-h-screen main-menu-bg select-none flex flex-col justify-between font-sans overflow-hidden transition-all duration-700"
       style={{
         backgroundImage: `url('${themeConfig.bgImage || '/image/mainmenubg1.jpg'}')`,

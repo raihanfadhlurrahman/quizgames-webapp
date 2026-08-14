@@ -7,66 +7,199 @@ const LOCAL_STORAGE_LEADERBOARD_KEY = 'islamic_millionaire_leaderboard';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'islamic_millionaire_categories';
 
 export class GameService {
-  // Fetch All Categories
+  // Fetch All Categories (Supabase DB + LocalStorage fallback/merge)
   static async getCategories(): Promise<Category[]> {
+    let list: Category[] = [];
+
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase.from('categories').select('*').order('name', { ascending: true });
-        if (!error && data && data.length > 0) return data;
+        if (!error && data && data.length > 0) {
+          list = data.map((c: any) => ({
+            ...c,
+            theme_id: c.theme_id || 'islamic',
+          }));
+        }
       } catch (e) {
-        console.warn('Supabase categories fetch failed, falling back to local:', e);
+        console.warn('Supabase categories fetch failed:', e);
       }
     }
+
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
       if (saved) {
         try {
-          return JSON.parse(saved);
-        } catch {
-          return INITIAL_CATEGORIES;
+          const localList: Category[] = JSON.parse(saved);
+          if (Array.isArray(localList) && localList.length > 0) {
+            if (list.length > 0) {
+              list = list.map((spCat) => {
+                const matched = localList.find(
+                  (lCat) => lCat.id === spCat.id || lCat.name.toLowerCase() === spCat.name.toLowerCase()
+                );
+                return matched ? { ...spCat, ...matched } : spCat;
+              });
+
+              localList.forEach((lCat) => {
+                if (!list.some((spCat) => spCat.id === lCat.id || spCat.name.toLowerCase() === lCat.name.toLowerCase())) {
+                  list.push(lCat);
+                }
+              });
+            } else {
+              list = localList;
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse local categories:', e);
         }
       }
     }
-    return INITIAL_CATEGORIES;
+
+    if (list.length === 0) {
+      list = INITIAL_CATEGORIES;
+    }
+
+    return list;
   }
 
-  // Save/Update Category (Admin CRUD)
-  static async saveCategory(category: Category): Promise<void> {
+  // Save/Update Category (Supabase DB + LocalStorage Sync)
+  static async saveCategory(category: Category, oldCategoryName?: string): Promise<Category> {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(category.id || '');
+    let savedCat: Category = { ...category };
+
+    const payload: any = {
+      name: category.name.trim(),
+      icon: category.icon || '🕌',
+      description: category.description || '',
+      theme_id: category.theme_id || 'islamic',
+    };
+
     if (isSupabaseConfigured() && supabase) {
       try {
-        const payload = {
-          name: category.name.trim(),
-          icon: category.icon || '🕌',
-          description: category.description || '',
-          theme_id: category.theme_id || 'islamic',
-        };
-        if (category.id && !category.id.startsWith('cat-') && !category.id.startsWith('custom-')) {
-          await supabase.from('categories').update(payload).eq('id', category.id);
+        if (isUUID) {
+          let { data, error } = await supabase
+            .from('categories')
+            .update(payload)
+            .eq('id', category.id)
+            .select()
+            .maybeSingle();
+
+          if (error && error.message?.includes('theme_id')) {
+            delete payload.theme_id;
+            const res = await supabase.from('categories').update(payload).eq('id', category.id).select().maybeSingle();
+            data = res.data;
+            error = res.error;
+          }
+
+          if (!error && data) {
+            savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
+          }
         } else {
-          await supabase.from('categories').upsert([payload], { onConflict: 'name' });
+          const searchName = oldCategoryName ? oldCategoryName.trim() : category.name.trim();
+          const { data: existing } = await supabase.from('categories').select('*').eq('name', searchName).maybeSingle();
+
+          if (existing?.id) {
+            let { data, error } = await supabase
+              .from('categories')
+              .update(payload)
+              .eq('id', existing.id)
+              .select()
+              .maybeSingle();
+
+            if (!error && data) {
+              savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
+            }
+          } else {
+            let { data, error } = await supabase
+              .from('categories')
+              .upsert([payload], { onConflict: 'name' })
+              .select()
+              .maybeSingle();
+
+            if (!error && data) {
+              savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
+            }
+          }
+        }
+
+        if (oldCategoryName && oldCategoryName.trim() !== category.name.trim()) {
+          try {
+            await supabase
+              .from('questions')
+              .update({ category_name: category.name.trim() })
+              .eq('category_name', oldCategoryName.trim());
+          } catch (e) {
+            console.warn('Updating question category_name in Supabase failed:', e);
+          }
         }
       } catch (e) {
         console.warn('Supabase save category failed, saving to LocalStorage:', e);
       }
     }
+
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
-      let list: Category[] = saved ? JSON.parse(saved) : [...INITIAL_CATEGORIES];
-      const idx = list.findIndex(c => c.id === category.id || c.name.toLowerCase() === category.name.toLowerCase());
-      if (idx >= 0) {
-        list[idx] = category;
-      } else {
-        list.push({ ...category, id: category.id || `cat-${Date.now()}` });
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
+        let list: Category[] = saved ? JSON.parse(saved) : [...INITIAL_CATEGORIES];
+
+        const targetId = category.id;
+        const targetOldName = (oldCategoryName || '').toLowerCase().trim();
+        const targetName = category.name.toLowerCase().trim();
+
+        const idx = list.findIndex(
+          c => c.id === targetId ||
+               (targetOldName && c.name.toLowerCase().trim() === targetOldName) ||
+               (targetName && c.name.toLowerCase().trim() === targetName)
+        );
+
+        if (idx >= 0) {
+          list[idx] = {
+            ...list[idx],
+            ...savedCat,
+            id: list[idx].id,
+          };
+          savedCat = list[idx];
+        } else {
+          const newId = savedCat.id || `cat-custom-${Date.now()}`;
+          savedCat.id = newId;
+          list.push(savedCat);
+        }
+
+        localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
+
+        if (oldCategoryName && oldCategoryName.trim() !== category.name.trim()) {
+          const savedQuestions = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+          if (savedQuestions) {
+            try {
+              let qList: Question[] = JSON.parse(savedQuestions);
+              let qUpdated = false;
+              qList = qList.map(q => {
+                if (q.category_name?.trim().toLowerCase() === oldCategoryName.trim().toLowerCase()) {
+                  qUpdated = true;
+                  return { ...q, category_name: category.name.trim() };
+                }
+                return q;
+              });
+              if (qUpdated) {
+                localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(qList));
+              }
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.warn('LocalStorage saveCategory error:', e);
       }
-      localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
     }
+
+    return savedCat;
   }
 
-  // Delete Category (Admin CRUD)
+  // Delete Category (Supabase DB + LocalStorage Sync)
   static async deleteCategory(id: string, name?: string): Promise<void> {
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
     if (isSupabaseConfigured() && supabase) {
       try {
-        if (id && !id.startsWith('cat-')) {
+        if (isUUID) {
           await supabase.from('categories').delete().eq('id', id);
         } else if (name) {
           await supabase.from('categories').delete().eq('name', name);
@@ -75,11 +208,16 @@ export class GameService {
         console.warn('Supabase delete category failed:', e);
       }
     }
+
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
-      let list: Category[] = saved ? JSON.parse(saved) : [...INITIAL_CATEGORIES];
-      list = list.filter(c => c.id !== id && (name ? c.name !== name : true));
-      localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
+        let list: Category[] = saved ? JSON.parse(saved) : [...INITIAL_CATEGORIES];
+        list = list.filter(c => c.id !== id && (name ? c.name.toLowerCase() !== name.toLowerCase() : true));
+        localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.warn('LocalStorage deleteCategory error:', e);
+      }
     }
   }
 
@@ -167,12 +305,20 @@ export class GameService {
     if (isSupabaseConfigured() && supabase) {
       try {
         let query = supabase.from('questions').select('*, categories(name)');
-        const { data, error } = await query;
+        let { data, error } = await query;
+
+        // Fallback without categories join if relation fails
+        if (error) {
+          const fallback = await supabase.from('questions').select('*');
+          data = fallback.data;
+          error = fallback.error;
+        }
+
         if (!error && data && data.length > 0) {
           let mapped = data.map((q: any) => ({
             ...q,
             theme_id: q.theme_id || 'islamic',
-            category_name: q.categories?.name || 'Campuran',
+            category_name: q.categories?.name || q.category_name || 'Campuran',
           }));
           
           // Filter strictly by active theme
@@ -189,7 +335,25 @@ export class GameService {
       }
     }
 
-    // Fallback ONLY if Supabase returned 0 rows
+    // Check LocalStorage fallback
+    if (pool.length === 0 && typeof window !== 'undefined') {
+      const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+      if (saved) {
+        try {
+          const list: Question[] = JSON.parse(saved);
+          let filtered = list.filter(q => (q.theme_id || 'islamic') === activeTheme);
+          if (categoryName && categoryName !== 'Campuran') {
+            const catFiltered = filtered.filter(q => q.category_name === categoryName);
+            if (catFiltered.length > 0) filtered = catFiltered;
+          }
+          if (filtered.length > 0) pool = filtered;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Fallback ONLY if both Supabase & LocalStorage returned 0 rows
     if (pool.length === 0) {
       pool = INITIAL_QUESTIONS.filter((q) => (q.theme_id || 'islamic') === activeTheme);
       if (categoryName && categoryName !== 'Campuran') {
@@ -219,19 +383,37 @@ export class GameService {
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('questions')
           .select('*, categories(name)')
           .in('id', ids);
 
+        if (error) {
+          const fallback = await supabase.from('questions').select('*').in('id', ids);
+          data = fallback.data;
+          error = fallback.error;
+        }
+
         if (!error && data && data.length > 0) {
           pool = data.map((q: any) => ({
             ...q,
-            category_name: q.categories?.name || 'Campuran',
+            category_name: q.categories?.name || q.category_name || 'Campuran',
           }));
         }
       } catch (e) {
         console.warn('Supabase fetch questions by ids failed:', e);
+      }
+    }
+
+    if (pool.length === 0 && typeof window !== 'undefined') {
+      const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+      if (saved) {
+        try {
+          const list: Question[] = JSON.parse(saved);
+          pool = list.filter((q) => ids.includes(q.id || ''));
+        } catch {
+          // ignore
+        }
       }
     }
 
@@ -249,56 +431,95 @@ export class GameService {
     return sorted;
   }
 
-  // Fetch ALL questions for Admin view (100% directly from Supabase DB, ordered by created_at DESC)
+  // Fetch ALL questions for Admin view (Supabase DB + LocalStorage fallback/merge)
   static async getAllQuestionsAdmin(): Promise<Question[]> {
     let pool: Question[] = [];
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from('questions')
           .select('*, categories(name)')
           .order('created_at', { ascending: false });
-        if (!error && data) {
+
+        if (error) {
+          const fallback = await supabase
+            .from('questions')
+            .select('*')
+            .order('created_at', { ascending: false });
+          data = fallback.data;
+          error = fallback.error;
+        }
+
+        if (!error && data && data.length > 0) {
           pool = data.map((q: any) => ({
             ...q,
-            category_name: q.categories?.name || 'Campuran',
+            theme_id: q.theme_id || 'islamic',
+            category_name: q.categories?.name || q.category_name || 'Campuran',
           }));
-          return pool;
         }
       } catch (e) {
         console.warn('Supabase fetch all questions failed:', e);
       }
     }
+
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+      if (saved) {
+        try {
+          const localList: Question[] = JSON.parse(saved);
+          if (Array.isArray(localList) && localList.length > 0) {
+            if (pool.length > 0) {
+              pool = pool.map((spQ) => {
+                const matched = localList.find((lQ) => lQ.id === spQ.id);
+                return matched ? { ...spQ, ...matched } : spQ;
+              });
+
+              localList.forEach((lQ) => {
+                if (!pool.some((p) => p.id === lQ.id)) {
+                  pool.unshift(lQ);
+                }
+              });
+            } else {
+              pool = localList;
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse local questions:', e);
+        }
+      }
+    }
+
     if (pool.length === 0) {
-      // Fallback to initial questions
       pool = INITIAL_QUESTIONS;
     }
 
     return pool;
   }
 
-  // Save/Update Single Question (100% to Supabase DB)
+  // Save/Update Single Question (Supabase DB + LocalStorage Sync)
   static async saveQuestion(question: Question): Promise<Question> {
-    if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Attempted to save question but Supabase is not configured.');
-      throw new Error('Supabase is not configured. Cannot save question.');
-    }
-
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(question.id || '');
     let savedQuestion: Question = { ...question };
 
-    // Resolve category_id if possible
-    let catId = question.category_id || null;
-    if (question.category_name) {
-      const { data: catData } = await supabase.from('categories').select('id').eq('name', question.category_name.trim()).maybeSingle();
-      if (catData?.id) {
-        catId = catData.id;
+    // Resolve category_id safely (MUST be valid UUID format for PostgreSQL)
+    let catId: string | null = null;
+    if (question.category_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(question.category_id)) {
+      catId = question.category_id;
+    } else if (isSupabaseConfigured() && supabase && question.category_name) {
+      try {
+        const { data: catData } = await supabase.from('categories').select('id').eq('name', question.category_name.trim()).maybeSingle();
+        if (catData?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(catData.id)) {
+          catId = catData.id;
+        }
+      } catch {
+        // ignore
       }
     }
 
     const payload: any = {
       category_id: catId,
+      category_name: question.category_name || 'Campuran',
       theme_id: question.theme_id || 'islamic',
       game_type: question.game_type || 'millionaire',
       difficulty: question.difficulty || 'medium',
@@ -313,96 +534,146 @@ export class GameService {
       ustadz_hint: question.ustadz_hint || '',
     };
 
-    if (isUUID) {
-      let { data, error } = await supabase
-        .from('questions')
-        .update(payload)
-        .eq('id', question.id)
-        .select('*, categories(name)')
-        .single();
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        if (isUUID) {
+          let { data, error } = await supabase
+            .from('questions')
+            .update(payload)
+            .eq('id', question.id)
+            .select('*, categories(name)')
+            .maybeSingle();
 
-      if (error && error.message.includes('theme_id')) {
-        delete payload.theme_id;
-        const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*, categories(name)').single();
-        data = res.data;
-        error = res.error;
-      }
+          if (error) {
+            delete payload.category_id;
+            const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
+            data = res.data;
+            error = res.error;
+          }
 
-      if (error) {
-        console.error('Supabase update question error:', error);
-        throw new Error(`Gagal memperbarui soal: ${error.message}`);
-      }
-      if (data) {
-        savedQuestion = {
-          ...data,
-          category_name: data.categories?.name || question.category_name || 'Campuran',
-        };
-      }
-    } else {
-      let { data, error } = await supabase
-        .from('questions')
-        .insert([payload])
-        .select('*, categories(name)')
-        .single();
+          if (error && error.message?.includes('theme_id')) {
+            delete payload.theme_id;
+            const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
+            data = res.data;
+            error = res.error;
+          }
 
-      if (error && error.message.includes('theme_id')) {
-        delete payload.theme_id;
-        const res = await supabase.from('questions').insert([payload]).select('*, categories(name)').single();
-        data = res.data;
-        error = res.error;
-      }
+          if (!error && data) {
+            savedQuestion = {
+              ...data,
+              category_name: data.categories?.name || data.category_name || question.category_name || 'Campuran',
+            };
+          }
+        } else {
+          let { data, error } = await supabase
+            .from('questions')
+            .insert([payload])
+            .select('*, categories(name)')
+            .maybeSingle();
 
-      if (error) {
-        console.error('Supabase insert question error:', error);
-        if (error.message.includes("schema cache") || error.message.includes("theme_id")) {
-          throw new Error(`⚠️ Kolom 'theme_id' belum ada di Supabase! Harap jalankan script migration di dokumen/schema.sql pada Supabase SQL Editor.`);
+          if (error) {
+            delete payload.category_id;
+            const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
+            data = res.data;
+            error = res.error;
+          }
+
+          if (error && error.message?.includes('theme_id')) {
+            delete payload.theme_id;
+            const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
+            data = res.data;
+            error = res.error;
+          }
+
+          if (!error && data) {
+            savedQuestion = {
+              ...data,
+              category_name: data.categories?.name || data.category_name || question.category_name || 'Campuran',
+            };
+          }
         }
-        throw new Error(`Gagal menambahkan soal: ${error.message}`);
+      } catch (e: any) {
+        console.warn('Supabase saveQuestion failed, falling back to local storage:', e);
       }
-      if (data) {
-        savedQuestion = {
-          ...data,
-          category_name: data.categories?.name || question.category_name || 'Campuran',
-        };
+    }
+
+    // Always sync to LocalStorage so edits persist locally
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+        let list: Question[] = saved ? JSON.parse(saved) : [...INITIAL_QUESTIONS];
+
+        const targetId = question.id;
+        const idx = list.findIndex(q => q.id === targetId || (targetId && q.id === targetId));
+
+        if (idx >= 0) {
+          list[idx] = {
+            ...list[idx],
+            ...savedQuestion,
+            id: list[idx].id, // maintain existing ID
+          };
+          savedQuestion = list[idx];
+        } else {
+          const newId = savedQuestion.id || `q-custom-${Date.now()}`;
+          savedQuestion.id = newId;
+          list.unshift(savedQuestion);
+        }
+
+        localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.warn('LocalStorage saveQuestion error:', e);
       }
     }
 
     return savedQuestion;
   }
 
-  // Delete Question (100% from Supabase DB)
+  // Delete Question (Supabase DB + LocalStorage Sync)
   static async deleteQuestion(id: string): Promise<void> {
-    if (!isSupabaseConfigured() || !supabase) {
-      throw new Error('Supabase is not configured. Cannot delete question.');
-    }
-
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-    if (!isUUID) {
-      // If it's a non-UUID ID (e.g. initial static 'q-1'), cannot delete from Supabase DB by UUID
-      return;
+
+    if (isSupabaseConfigured() && supabase && isUUID) {
+      try {
+        await supabase.from('questions').delete().eq('id', id);
+      } catch (e) {
+        console.warn('Supabase delete question error:', e);
+      }
     }
 
-    const { error } = await supabase.from('questions').delete().eq('id', id);
-    if (error) {
-      console.error('Supabase delete question error:', error);
-      throw new Error(`Gagal menghapus soal: ${error.message}`);
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+        let list: Question[] = saved ? JSON.parse(saved) : [...INITIAL_QUESTIONS];
+        list = list.filter(q => q.id !== id);
+        localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.warn('LocalStorage delete question error:', e);
+      }
     }
   }
 
-  // Delete Questions Batch (Bulk Delete 100% from Supabase DB)
+  // Delete Questions Batch (Bulk Delete Supabase DB + LocalStorage Sync)
   static async deleteQuestionsBatch(ids: string[]): Promise<void> {
     if (!ids || ids.length === 0) return;
-    if (!isSupabaseConfigured() || !supabase) {
-      throw new Error('Supabase is not configured. Cannot delete questions batch.');
+    const uuidIds = ids.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
+    if (isSupabaseConfigured() && supabase && uuidIds.length > 0) {
+      try {
+        await supabase.from('questions').delete().in('id', uuidIds);
+      } catch (e) {
+        console.warn('Supabase delete batch questions error:', e);
+      }
     }
 
-    const uuidIds = ids.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
-    if (uuidIds.length === 0) return;
-
-    const { error } = await supabase.from('questions').delete().in('id', uuidIds);
-    if (error) {
-      console.error('Supabase delete batch questions error:', error);
-      throw new Error(`Gagal menghapus beberapa soal: ${error.message}`);
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
+        let list: Question[] = saved ? JSON.parse(saved) : [...INITIAL_QUESTIONS];
+        list = list.filter(q => !ids.includes(q.id));
+        localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.warn('LocalStorage batch delete question error:', e);
+      }
     }
   }
 

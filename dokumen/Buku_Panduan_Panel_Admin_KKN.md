@@ -14,19 +14,20 @@
    - 2.2 Ringkasan Kartu KPI Statistik
    - 2.3 Baris Aksi Cepat (*Quick Action Bar*)
 3. [BAB 3: Modul Bank Soal Kuis](#bab-3-modul-bank-soal-kuis)
-   - 3.1 Langkah Menambah Soal Manual
-   - 3.2 Panduan Impor Massal dari Excel / Google Sheets
-   - 3.3 Format Struktur Kolom CSV
+   - 3.1 Langkah Menambah Soal Manual (Formulir)
+   - 3.2 Panduan Impor Massal dari Excel / Google Sheets (Copas)
+   - 3.3 Impor Berkas File (.CSV / .TXT / .TSV) & Format Kolom
    - 3.4 Filter Tema, Pencarian, & Edit/Hapus Soal
 4. [BAB 4: Modul Pengelolaan Kategori](#bab-4-modul-pengelolaan-kategori)
    - 4.1 Langkah Menambahkan Kategori Baru
    - 4.2 Penataan Emoji Ikon & Deskripsi Topik
-   - 4.3 Mengedit Kategori
+   - 4.3 Cara Mengedit & Memperbarui Kategori
 5. [BAB 5: Modul Sesi Room Live & Layar Proyektor](#bab-5-modul-sesi-room-live--layar-proyektor)
    - 5.1 Konsep Pertandingan Live Proyektor
    - 5.2 Langkah Membuat Room Live Baru & PIN 6-Digit
-   - 5.3 Menayangkan Layar Proyektor (Host View)
-   - 5.4 Mengendalikan Jalannya Pertandingan (Timer, Grafik, & Leaderboard Live)
+   - 5.3 Menayangkan Layar Proyektor (Host View & Ruang Tunggu)
+   - 5.4 Alur Jalannya Pertandingan (Pertanyaan, Penjelasan, & Leaderboard)
+   - 5.5 Peringkat Akhir Sesi & Selebrasi Pemenang
 6. [BAB 6: Modul Pemain & Rekapitulasi Skor](#bab-6-modul-pemain--rekapitulasi-skor)
    - 6.1 Daftar Akun Peserta Terdaftar
    - 6.2 Pemantauan Perolehan Poin Amal, Wawasan, & Budaya
@@ -84,61 +85,92 @@ Menampilkan rangkuman realtime statistik di bagian atas dashboard:
 
 ## BAB 3: Modul Bank Soal Kuis
 
-### 3.1 Langkah Menambah Soal Manual
+### 3.1 Langkah Menambah Soal Manual (Formulir)
+![Panduan Visual Tambah Soal Manual](../image/panduan/desktop/tambahsoal1.png)
+
 1. Pastikan Anda berada di tab **📚 Bank Soal Kuis**.
-2. Klik tombol **`+ Tambah Soal Baru`** di pojok kanan atas.
-3. Isikan formulir dengan rincian berikut:
-   - **Tema Target**: Pilih salah satu dari *Mode Islami 🕌*, *Mode Kemerdekaan 🇲🇨*, atau *Mode Kebudayaan 🎭*.
-   - **Kategori**: Masukkan nama kategori kuis (misal: *Aqidah*, *Sejarah Kemerdekaan*, *Pakaian Adat*).
+2. Klik tombol **`+ Tambah Soal Baru`** di pojok kanan atas *(Langkah 1)*.
+3. Isikan formulir **Tambah Soal Baru** *(Langkah 2)*:
+   - **Tema Soal (Wajib)**: Pilih salah satu dari *Mode Islami 🕌*, *Mode Kemerdekaan 🇲🇨*, atau *Mode Kebudayaan 🎭*.
+   - **Kategori (Sesuai Tema)**: Pilih topik kategori yang sesuai (misal: *Adab*, *Aqidah*, *Shalat*, *Al-Qur'an*, dll).
    - **Tingkat Kesulitan**: Pilih *Mudah (Easy)*, *Sedang (Medium)*, atau *Sulit (Hard)*.
    - **Teks Pertanyaan**: Ketikkan kalimat pertanyaan kuis secara jelas.
-   - **Pilihan Jawaban**: Isi Pilihan A, Pilihan B, Pilihan C, dan Pilihan D.
-   - **Kunci Jawaban**: Tentukan opsi mana yang merupakan jawaban benar (A / B / C / D).
-   - **Penjelasan & Dalil**: *(Sangat dianjurkan)* Masukkan teks penjelasan pembahasan, dalil/ayat/hadits, dan bantuan ustadz.
-4. Klik **`SIMPAN SOAL`**.
+   - **Pilihan Jawaban**: Isi Pilihan (A), Pilihan (B), Pilihan (C), dan Pilihan (D).
+   - **Jawaban Benar**: Tentukan opsi kunci jawaban benar (A / B / C / D).
+   - **Penjelasan Edukatif**: Tuliskan penjelasan ringkas pembahasan jawaban.
+   - **Dalil / Referensi (Opsional)**: Masukkan teks dalil, surat/ayat Al-Qur'an, hadits, atau referensi pendukung.
+4. Klik **`SIMPAN PERMANEN`** untuk menyimpan soal ke database *(Langkah 3)*.
 
-### 3.2 Panduan Impor Massal dari Excel / Google Sheets
+---
+
+### 3.2 Panduan Impor Massal dari Excel / Google Sheets (Copas)
+![Panduan Impor Massal Copas Text](../image/panduan/desktop/tambahsoal2.png)
+
 Untuk memasukkan puluhan hingga ratusan soal sekaligus tanpa mengetik satu per satu:
-1. Klik tombol **`Impor (CSV)`** pada baris aksi cepat.
-2. Buka aplikasi **Microsoft Excel** atau **Google Sheets** yang berisi data kuis Anda.
-3. Blok baris data tabel soal (tanpa mengikutkan header judul kolom) ➔ Tekan **Ctrl + C**.
-4. Pada modal Impor di aplikasi, tempelkan (**Ctrl + V**) data tersebut ke dalam kotak teks.
-5. Klik **`PRATINJAU & VALIDASI TEKS`**.
-6. Sistem akan mengecek keabsahan tiap kolom. Apabila status menunjukkan **Ready**, klik **`SIMPAN SOAL KE DATABASE`**.
+1. Klik tombol **`Impor (CSV)`** pada baris aksi cepat *(Langkah 1)*. Anda juga dapat menekan link **`Google Sheets`** untuk membuka template resmi.
+2. Pada modal Impor Cerdas:
+   - Select **Pilih Tema Target Import Soal (Wajib Pilih)** (misal: *Mode Islami*).
+   - Masuk ke tab **`Copas Langsung dari Excel / Google Sheets`** *(Langkah 2)*.
+   - Buka berkas Excel/Google Sheets Anda ➔ Blok baris tabel soal ➔ Tekan **Ctrl + C**.
+   - Tempelkan (**Ctrl + V**) ke dalam area teks modal impor.
+   - Klik **`PRATINJAU & VALIDASI TEKS`**.
+3. Periksa tabel **Hasil Pratinjau Dideteksi** *(Langkah 3)*:
+   - Jika status menunjukkan **Ready**, klik **`SIMPAN X SOAL KE DATABASE`**.
 
-### 3.3 Format Struktur Kolom CSV
-Apabila Anda menggunakan berkas `.csv`, urutan kolom wajib disusun sebagai berikut:
-`theme_id, category_name, difficulty, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, dalil, ustadz_hint`
+---
+
+### 3.3 Impor Berkas File (.CSV / .TXT / .TSV) & Format Kolom
+![Panduan Upload File CSV](../image/panduan/desktop/tambahsoal3.png)
+
+Selain metode copas, Anda dapat langsung mengunggah file dokumen `.csv`, `.txt`, atau `.tsv`:
+1. Pada modal Impor Soal Massal, pilih tab **`Upload Berkas (.CSV / .TXT / .TSV)`**.
+2. Klik tombol **`PILIH BERKAS FILE`** ➔ Pilih file dari komputer Anda *(Langkah 2)*.
+3. Urutan 12 kolom CSV wajib disusun sebagai berikut:
+   `theme_id, category_name, difficulty, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, dalil, ustadz_hint`
 
 *Contoh Baris Data CSV:*
 `islamic,Rukun Islam,easy,Berapakah jumlah Rukun Islam?,4 perkara,5 perkara,6 perkara,7 perkara,B,Rukun Islam ada 5 perkara,HR. Bukhari,Syahadat`
 
+4. Setelah terverifikasi, klik **`SIMPAN X SOAL KE DATABASE`**.
+
+---
+
 ### 3.4 Filter Tema, Pencarian, & Edit/Hapus Soal
-- **Filter Tema**: Gunakan pill filter di bawah header (*Semua Soal*, *Aqidah & Islami*, *Kemerdekaan*, *Kebudayaan*) untuk memilah daftar soal.
+- **Filter Tema**: Gunakan pill filter (*Semua Soal*, *Aqidah & Islami*, *Kemerdekaan*, *Kebudayaan*) untuk memilah daftar soal.
 - **Kolom Pencarian**: Ketikkan kata kunci pertanyaan pada kotak pencarian di kanan.
-- **Edit Soal**: Klik ikon pensil (✏️) pada baris soal ➔ Perbarui data ➔ Klik **`SIMPAN PERUBAHAN`**.
-- **Hapus Soal**: Klik ikon tong sampah (🗑️) pada baris soal ➔ Konfirmasi penghapusan.
+- **Edit Soal**: Klik ikon pensil hijau (✏️) pada baris soal ➔ Perbarui data ➔ Klik **`SIMPAN PERUBAHAN`**.
+- **Hapus Soal**: Klik ikon tong sampah merah (🗑️) pada baris soal ➔ Konfirmasi penghapusan.
 
 ---
 
 ## BAB 4: Modul Pengelolaan Kategori
 
 ### 4.1 Langkah Menambahkan Kategori Baru
+![Panduan Tambah Kategori Baru](../image/panduan/desktop/kategori1.png)
+
 1. Pindah ke tab **🏷️ Kelola Kategori** pada menu navigasi kiri.
-2. Klik tombol **`+ Tambah Kategori Baru`**.
-3. Lengkapi formulir kategori:
-   - **Tema Kategori**: Tentukan tema utama (Islami / Kemerdekaan / Kebudayaan).
-   - **Nama Kategori**: Masukkan nama topik (misal: *Fiqih Ibadah*, *Kuliner Nusantara*, *Pahlawan Nasional*).
-   - **Ikon Emoji**: Pilih emoji pengenal (misal: 🕌, 🇮🇩, 🎭, 📜, 🏆, 🍜).
-   - **Deskripsi**: Tuliskan penjelasan singkat isi kategori.
-4. Klik **`SIMPAN KATEGORI`**.
+2. Klik tombol **`+ Tambah Kategori Baru`** *(Langkah 1)*.
+3. Lengkapi formulir **Tambah Kategori Baru** *(Langkah 2)*:
+   - **Tema Kategori**: Tentukan tema utama (*Mode Islami*, *Mode Kemerdekaan*, atau *Mode Kebudayaan*).
+   - **Nama Kategori**: Masukkan nama topik (misal: *Modul TPA Ar-Rahman - Nabi dan Rasul*, *Fiqih Ibadah*, *Kuliner Nusantara*).
+   - **Ikon Emoji**: Pilih emoji pengenal visual (misal: 🕌, 🇮🇩, 🎭, ☄️, 🍧, 📜, 🏆, 🍜).
+   - **Deskripsi Singkat**: Tuliskan penjelasan singkat isi kategori.
+4. Klik **`SIMPAN KATEGORI`** *(Langkah 3)*. Kategori baru akan otomatis muncul di **Daftar Kategori Kuis Terdaftar**.
+
+---
 
 ### 4.2 Penataan Emoji Ikon & Deskripsi Topik
-Ikon emoji dan deskripsi yang Anda atur akan langsung muncul pada beranda utama permainan peserta, memudahkan mereka dalam memilih topik kuis favorit.
+Ikon emoji dan deskripsi yang Anda atur akan langsung dipublikasikan ke beranda utama permainan peserta, memudahkan peserta kuis dalam memilih topik yang diminati.
 
-### 4.3 Mengedit Kategori
-- Klik tombol ikon pensil (✏️) pada kartu kategori yang ingin diperbarui.
-- Ubah nama, emoji, atau deskripsi, lalu klik **`SIMPAN KATEGORI`**.
+---
+
+### 4.3 Cara Mengedit & Memperbarui Kategori
+![Panduan Edit Kategori Kuis](../image/panduan/desktop/kategori2.png)
+
+1. Pada kartu kategori yang ingin diubah, klik tombol ikon pensil hijau (✏️) **Edit Kategori** *(Langkah 1)*.
+2. Form **Edit Kategori Kuis** akan terbuka *(Langkah 2)*. Anda dapat memperbarui Tema Kategori, Ikon Emoji, Nama Kategori, maupun Deskripsi Singkat.
+3. Klik **`SIMPAN PERUBAHAN`**. Data kategori pada sistem akan langsung ter-update secara realtime *(Langkah 3)*.
+4. Apabila ingin menghapus kategori, tekan ikon tong sampah merah (🗑️) **Hapus Kategori**.
 
 ---
 
@@ -147,30 +179,54 @@ Ikon emoji dan deskripsi yang Anda atur akan langsung muncul pada beranda utama 
 ### 5.1 Konsep Pertandingan Live Proyektor
 Mode Room Live dirancang untuk pertandingan kuis interaktif secara tatap muka (misal: di aula, masjid, atau panggung acara KKN). Layar laptop admin ditayangkan ke **Proyektor/TV Utama (Host View)**, sementara seluruh peserta menjawab soal secara bersamaan menggunakan smartphone masing-masing.
 
+---
+
 ### 5.2 Langkah Membuat Room Live Baru & PIN 6-Digit
-1. Buka tab **🎮 Sesi Room Live** ➔ Klik **`+ Buat Room Live`**.
-2. Isikan rincian sesi:
-   - **Judul Sesi**: Misal *Kuis Kemerdekaan RT 02* atau *Lomba Cerdas Cermat KKN*.
-   - **Pilih Tema Soal**: Islami / Kemerdekaan / Kebudayaan.
-   - **Timer Per Soal**: Tentukan durasi (misal: 15 detik, 20 detik, atau 30 detik).
-3. Klik **`BUAT ROOM LIVE`**.
-4. Sistem akan otomatis menerbitkan **Kode PIN 6-Digit** unik (misal: `742918`).
+![Panduan Membuat Room Live](../image/panduan/desktop/room1.png)
 
-### 5.3 Menayangkan Layar Proyektor (Host View)
+1. Buka tab **🎮 Sesi Room Live** ➔ Klik tombol **`+ Buat Room Live`** *(Langkah 1)*.
+2. Lengkapi formulir **Buat Sesi Room Kuis Live Baru** *(Langkah 2)*:
+   - **Judul Acara / Room Kuis**: Ketikkan nama acara (misal: *Kuis TPA Ar-Rahman Nabi & Rasul* atau *Lomba Cerdas Cermat KKN*).
+   - **Tema Room Kuis Live**: Pilih *Mode Islami*, *Mode Kemerdekaan*, atau *Mode Kebudayaan*.
+   - **Kategori Soal (Sesuai Tema)**: Pilih kategori yang akan diujikan.
+   - **Metode Pemilihan Soal**:
+     - *Acak Otomatis (10 Soal)*: Sistem memilih 10 soal secara acak dari kategori.
+     - *Pilih Manual*: Anda dapat memilih soal-soal spesifik yang ingin dimasukkan ke dalam kuis.
+3. Klik tombol **`+ Buat & Tampilkan Layar Proyektor`** *(Langkah 3)*.
+
+---
+
+### 5.3 Menayangkan Layar Proyektor (Host View & Ruang Tunggu)
+![Panduan Layar Proyektor Waiting Room](../image/panduan/desktop/room2.png)
+
 1. Sambungkan laptop admin ke Proyektor/TV Utama menggunakan kabel HDMI atau Screen Cast.
-2. Pada tabel sesi room live di dashboard admin, klik tombol **`💻 Buka Layar Proyektor`**.
-3. Layar proyektor fullscreen akan terbuka, menampilkan Kode PIN 6-Digit dan petunjuk bergabung bagi peserta.
-4. Peserta membuka peramban di HP ➔ Memilih menu **`JOIN ROOM LIVE`** ➔ Memasukkan Kode PIN & Nama Panggilan.
-5. Nama peserta yang berhasil bergabung akan muncul secara realtime di layar proyektor.
+2. Layar proyektor kuis akan terbuka secara otomatis *(Langkah 3)*, menampilkan:
+   - **Kode PIN 6-Digit** unik yang besar dan jelas (contoh: `494 589`).
+   - Petunjuk cara bergabung bagi peserta.
+3. Peserta membuka peramban di smartphone ➔ Klik **`JOIN ROOM LIVE`** ➔ Memasukkan Kode PIN & Nama Panggilan.
+4. Nama dan avatar peserta yang berhasil terhubung akan langsung muncul di Layar Tunggu Proyektor (misal: *1 Pemain Telah Terhubung — Avit COOL ABIS*).
+5. Setelah semua peserta siap, Host mengklik tombol hijau **`MULAI KUIS SOSIALISASI`**.
+6. *(Catatan Admin)*: Jika perlu membatalkan/mengakhiri sesi lebih awal, klik tombol merah **`Akhiri Sesi Room`** di pojok kanan atas.
 
-### 5.4 Mengendalikan Jalannya Pertandingan
-1. Setelah semua peserta siap di layar tunggu, Host menekan tombol **`Mulai Pertandingan`**.
-2. Soal kuis dan hitung mundur timer akan berjalan secara serentak di layar proyektor dan HP peserta.
-3. Setelah timer soal habis, layar proyektor otomatis menayangkan **Grafik Realtime Distribusi Jawaban Peserta** dan **Pembahasan/Dalil**.
-4. Klik **`Soal Berikutnya`** untuk melanjutkan ke pertanyaan selanjutnya.
+---
 
-### 5.5 Menuntaskan Pertandingan & Mengumumkan Pemenang
-Pada akhir soal terakhir, layar proyektor akan menampilkan **Selebrasi Papan Skor Pemenang (Podium Juara 1, 2, dan 3)** secara spektakuler.
+### 5.4 Alur Jalannya Pertandingan (Pertanyaan, Penjelasan, & Leaderboard)
+![Panduan Alur Pertandingan Room Live](../image/panduan/desktop/room3.png)
+
+Pertandingan berjalan secara interaktif melalui 4 tahapan di Layar Proyektor:
+
+1. **Sesi Pertanyaan** *(Step 1)*:
+   - Layar menayangkan pertanyaan kuis, pilihan jawaban A/B/C/D, hitung mundur timer, serta indikator jumlah peserta yang menjawab live.
+   - Setelah timer selesai atau seluruh peserta menjawab, Host mengklik **`PENJELASAN & DALIL`**.
+2. **Sesi Penjelasan** *(Step 2)*:
+   - Menampilkan kunci jawaban yang benar, penjelasan edukatif ringkas, serta dalil/referensi pendukung.
+   - Host mengklik **`LIHAT STANDING SCOREBOARD`**.
+3. **Papan Peringkat Sementara** *(Step 3)*:
+   - Menampilkan skor sementara peserta setelah setiap nomor soal beserta tingkat akurasi jawaban.
+   - Host mengklik **`NEXT SOAL ->`** untuk mengulangi alur pada nomor soal berikutnya.
+4. **Peringkat Akhir Sesi & Selebrasi Pemenang** *(Step 4)*:
+   - Pada akhir soal terakhir, layar menayangkan **PODIUM PEMENANG KUIS!** (Juara 1 🥇, Juara 2 🥈, Juara 3 🥉) secara meriah.
+   - Tekan tombol **`Tutup Layar Proyektor`** untuk mengakhiri pertandingan.
 
 ---
 
