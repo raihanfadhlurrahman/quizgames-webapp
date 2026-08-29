@@ -11,11 +11,16 @@ import { CertificateGenerator } from '@/components/CertificateGenerator';
 import { LeaderboardView } from '@/components/LeaderboardView';
 import { RoomJoinModal } from '@/components/RoomJoinModal';
 import { KahootPlayerArena } from '@/components/KahootPlayerArena';
+import { EducationPortal } from '@/components/EducationPortal';
+import { EducationReader } from '@/components/EducationReader';
+import EducationChapterList from '@/components/EducationChapterList';
+import EducationBook from '@/components/EducationBook';
+import { EducationChapter, MateriChapter } from '@/types/education';
 import { GameService } from '@/lib/gameService';
 import { ProfileService } from '@/lib/profileService';
 import { audioManager } from '@/lib/audioManager';
 import { AuthService } from '@/lib/authService';
-import { QuizRoom } from '@/types/game';
+import { QuizRoom, Category } from '@/types/game';
 import { getThemeConfig } from '@/lib/themeConfig';
 
 export default function HomePage() {
@@ -27,6 +32,9 @@ export default function HomePage() {
   const [showSummaryLeaderboardModal, setShowSummaryLeaderboardModal] = useState<boolean>(false);
   const [showRoomJoinModal, setShowRoomJoinModal] = useState<boolean>(false);
   const [joinedKahootRoom, setJoinedKahootRoom] = useState<QuizRoom | null>(null);
+  const [activeEducationChapter, setActiveEducationChapter] = useState<EducationChapter | null>(null);
+  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [activeMateriChapter, setActiveMateriChapter] = useState<MateriChapter | null>(null);
 
   // Summary State
   const [finalResult, setFinalResult] = useState<{
@@ -130,6 +138,7 @@ export default function HomePage() {
           <WelcomeScreen
             onStart={handleStartSetup}
             onOpenRoomJoin={() => setShowRoomJoinModal(true)}
+            onOpenEducation={() => setGameState('EDUCATION_PORTAL')}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
           />
@@ -142,6 +151,53 @@ export default function HomePage() {
             }}
           />
         </>
+      )}
+
+      {/* EDUCATION MATERIAL PORTAL & READER VIEWS (NO-QUIZ SD-SMP) */}
+      {gameState === 'EDUCATION_PORTAL' && (
+        <EducationPortal
+          onBackToHome={() => setGameState('WELCOME')}
+          onSelectCategory={(cat) => {
+            setActiveCategory(cat);
+            setGameState('EDUCATION_CHAPTERS');
+          }}
+          player={player}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+        />
+      )}
+
+      {gameState === 'EDUCATION_CHAPTERS' && activeCategory && (
+        <EducationChapterList
+          category={activeCategory}
+          onBack={() => setGameState('EDUCATION_PORTAL')}
+          onSelectChapter={(ch) => {
+            setActiveMateriChapter(ch);
+            setGameState('EDUCATION_BOOK');
+          }}
+          player={player}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+        />
+      )}
+
+      {gameState === 'EDUCATION_BOOK' && activeMateriChapter && (
+        <EducationBook
+          chapter={activeMateriChapter}
+          onBack={() => setGameState('EDUCATION_CHAPTERS')}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          player={player}
+        />
+      )}
+
+      {gameState === 'EDUCATION_READER' && activeEducationChapter && (
+        <EducationReader
+          chapter={activeEducationChapter}
+          onBackToPortal={() => setGameState('EDUCATION_PORTAL')}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+        />
       )}
 
       {/* KAHOOT LIVE MULTIPLAYER ARENA */}

@@ -303,3 +303,267 @@ ALTER TABLE public.quiz_rooms ADD CONSTRAINT quiz_rooms_status_check CHECK (stat
 -- Ensure existing default questions without theme_id get set to 'islamic'
 UPDATE public.questions SET theme_id = 'islamic' WHERE theme_id IS NULL;
 UPDATE public.categories SET theme_id = 'islamic' WHERE theme_id IS NULL;
+
+-- ==========================================
+-- 12. MATERI EDUKASI (BUKU DIGITAL INTERAKTIF)
+-- Fitur Buku Digital Edukatif Modular Dinamis
+-- ==========================================
+
+-- ------------------------------------------
+-- 12.1 TABEL BAB MATERI (materi_chapters)
+-- ------------------------------------------
+CREATE TABLE IF NOT EXISTS public.materi_chapters (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
+    category_name VARCHAR(100) NOT NULL,
+    theme_id VARCHAR(50) DEFAULT 'islamic',
+    chapter_number INT NOT NULL DEFAULT 1,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    cover_icon VARCHAR(50) DEFAULT '📖',
+    cover_image_url TEXT,
+    is_published BOOLEAN DEFAULT true,
+    total_pages INT DEFAULT 0,
+    created_by UUID REFERENCES public.players(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ------------------------------------------
+-- 12.2 TABEL HALAMAN BUKU (materi_pages)
+-- ------------------------------------------
+CREATE TABLE IF NOT EXISTS public.materi_pages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    chapter_id UUID NOT NULL REFERENCES public.materi_chapters(id) ON DELETE CASCADE,
+    page_number INT NOT NULL DEFAULT 1,
+    
+    -- KONTEN SISI KIRI (Media Visual & Audio)
+    left_content_type VARCHAR(20) DEFAULT 'media' CHECK (left_content_type IN ('media', 'text', 'empty')),
+    left_media_url TEXT,
+    left_media_type VARCHAR(20) DEFAULT 'image' CHECK (left_media_type IN ('image', 'video', 'gif', 'youtube')),
+    left_audio_url TEXT,
+    left_audio_text TEXT,
+    left_title VARCHAR(200),
+    left_text TEXT,
+    
+    -- KONTEN SISI KANAN (Headline, Teks Cerita, Poin-Poin)
+    right_title VARCHAR(200),
+    right_story_text TEXT,
+    bullet_points JSONB DEFAULT '[]'::jsonb,
+    
+    -- MODAL INTERAKTIF: DALIL (Al-Qur'an / Hadits)
+    dalil_title VARCHAR(200),
+    dalil_arabic TEXT,
+    dalil_latin TEXT,
+    dalil_translation TEXT,
+    dalil_source VARCHAR(200),
+    
+    -- MODAL INTERAKTIF: TAHUKAH KAMU? (Fun Fact)
+    fun_fact_title VARCHAR(200),
+    fun_fact_description TEXT,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(chapter_id, page_number)
+);
+
+-- ------------------------------------------
+-- 12.3 INDEX PERFORMA QUERY
+-- ------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_materi_chapters_category ON public.materi_chapters(category_id);
+CREATE INDEX IF NOT EXISTS idx_materi_chapters_theme ON public.materi_chapters(theme_id);
+CREATE INDEX IF NOT EXISTS idx_materi_chapters_published ON public.materi_chapters(is_published);
+CREATE INDEX IF NOT EXISTS idx_materi_pages_chapter ON public.materi_pages(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_materi_pages_order ON public.materi_pages(chapter_id, page_number);
+
+-- ------------------------------------------
+-- 12.4 ROW LEVEL SECURITY (RLS) POLICIES
+-- ------------------------------------------
+ALTER TABLE public.materi_chapters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.materi_pages ENABLE ROW LEVEL SECURITY;
+
+-- Siswa bisa membaca Bab & Halaman yang sudah dipublish
+DROP POLICY IF EXISTS "Allow public read published chapters" ON public.materi_chapters;
+CREATE POLICY "Allow public read published chapters" ON public.materi_chapters
+    FOR SELECT USING (is_published = true);
+
+DROP POLICY IF EXISTS "Allow public read pages" ON public.materi_pages;
+CREATE POLICY "Allow public read pages" ON public.materi_pages
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.materi_chapters mc
+            WHERE mc.id = materi_pages.chapter_id AND mc.is_published = true
+        )
+    );
+
+-- Admin / Guru memiliki akses penuh (CRUD) ke semua Bab & Halaman
+DROP POLICY IF EXISTS "Allow admin all chapters" ON public.materi_chapters;
+CREATE POLICY "Allow admin all chapters" ON public.materi_chapters
+    FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow admin all pages" ON public.materi_pages;
+CREATE POLICY "Allow admin all pages" ON public.materi_pages
+    FOR ALL USING (true);
+
+-- ------------------------------------------
+-- 12.5 TRIGGER OTOMATIS: Update total_pages di materi_chapters
+-- ------------------------------------------
+CREATE OR REPLACE FUNCTION update_chapter_total_pages()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.materi_chapters
+    SET 
+        total_pages = (
+            SELECT COUNT(*) FROM public.materi_pages
+            WHERE chapter_id = COALESCE(NEW.chapter_id, OLD.chapter_id)
+        ),
+        updated_at = NOW()
+    WHERE id = COALESCE(NEW.chapter_id, OLD.chapter_id);
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_update_chapter_pages ON public.materi_pages;
+CREATE TRIGGER trigger_update_chapter_pages
+    AFTER INSERT OR DELETE ON public.materi_pages
+    FOR EACH ROW EXECUTE FUNCTION update_chapter_total_pages();
+
+-- ------------------------------------------
+-- 12.6 SUPABASE REALTIME
+-- ------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.materi_chapters;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.materi_pages;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END $$;
+
+-- ------------------------------------------
+-- 12.7 INITIAL SEEDER: MATERI EDUKASI ISLAMI
+-- ------------------------------------------
+DO $$
+DECLARE
+    v_cat_rukun UUID;
+    v_cat_shalat UUID;
+    v_cat_nabi UUID;
+    v_ch1_id UUID;
+    v_ch2_id UUID;
+    v_ch3_id UUID;
+BEGIN
+    -- Dapatkan ID kategori
+    SELECT id INTO v_cat_rukun FROM public.categories WHERE name = 'Rukun Islam' LIMIT 1;
+    SELECT id INTO v_cat_shalat FROM public.categories WHERE name = 'Shalat' LIMIT 1;
+    SELECT id INTO v_cat_nabi FROM public.categories WHERE name = 'Nabi dan Rasul' LIMIT 1;
+
+    -- 1. BAB 1: Mengenal Rukun Islam & Rukun Iman
+    IF NOT EXISTS (SELECT 1 FROM public.materi_chapters WHERE title = 'Mengenal Rukun Islam & Rukun Iman') THEN
+        INSERT INTO public.materi_chapters (
+            category_id, category_name, theme_id, chapter_number, title, description, cover_icon, is_published
+        ) VALUES (
+            v_cat_rukun, 'Rukun Islam', 'islamic', 1,
+            'Mengenal Rukun Islam & Rukun Iman',
+            'Pelajari 5 Pondasi Utama Agama Islam dan 6 Kepercayaan Hakiki Umat Muslim dengan cara visual dan menyenangkan.',
+            '🕌', true
+        ) RETURNING id INTO v_ch1_id;
+
+        -- Halaman 1 Bab 1
+        INSERT INTO public.materi_pages (
+            chapter_id, page_number, left_content_type, left_media_url, left_media_type, left_audio_text,
+            right_title, right_story_text, bullet_points,
+            dalil_title, dalil_arabic, dalil_latin, dalil_translation, dalil_source,
+            fun_fact_title, fun_fact_description
+        ) VALUES (
+            v_ch1_id, 1, 'media', '/image/sticker/islami/masjid.png', 'image',
+            'Rukun Islam adalah lima amalan pokok yang wajib dilaksanakan oleh setiap muslim. Nabi Muhammad mengibaratkan Islam seperti sebuah rumah yang berdiri kokoh di atas lima tiang utama.',
+            'Apa itu Rukun Islam?',
+            'Rukun Islam adalah 5 pondasi utama dalam beragama Islam. Tanpa tiang pondasi ini, keislaman seseorang menjadi tidak kokoh.',
+            '["Rukun Islam adalah 5 amalan pokok yang wajib dilaksanakan setiap muslim.", "Nabi Muhammad SAW mengibaratkan Islam seperti rumah kokoh di atas 5 tiang.", "Tanpa tiang ini, bangunan keislaman seseorang menjadi tidak sempurna."]'::jsonb,
+            'Hadits Rukun Islam (HR. Bukhari & Muslim)',
+            'بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ: شَهَادَةِ أَنْ لاَ إِلَهَ إِلاَّ اللهُ وَأَنَّ مُحَمَّدًا رَسُولُ اللهِ، وَإِقَامِ الصَّلاَةِ، وَإِيتَاءِ الزَّكَاةِ، وَحَجِّ الْبَيْتِ، وَصَوْمِ رَمَضَانَ',
+            'Buniyal-islaamu ''alaa khamsin: syahaadati al-laa ilaaha illallaah wa anna Muhammadar-rasuulullaah...',
+            'Islam dibangun di atas lima perkara: bersaksi bahwa tiada tuhan selain Allah dan Muhammad utusan Allah, mendirikan shalat, menunaikan zakat, berhaji, dan puasa Ramadhan.',
+            'Hadits Shahih Bukhari No. 8 & Muslim No. 16',
+            'Tahukah Kamu?',
+            'Sama seperti bangunan rumah, jika salah satu tiang pondasinya roboh, maka rumah tersebut akan mudah runtuh!'
+        );
+
+        -- Halaman 2 Bab 1
+        INSERT INTO public.materi_pages (
+            chapter_id, page_number, left_content_type, left_media_url, left_media_type, left_audio_text,
+            right_title, right_story_text, bullet_points,
+            fun_fact_title, fun_fact_description
+        ) VALUES (
+            v_ch1_id, 2, 'media', '/image/sticker/islami/alquran2.png', 'image',
+            'Rincian lima rukun Islam meliputi Syahadat, Sholat lima waktu, Zakat bagi yang berhak, Puasa di bulan Ramadhan, dan Haji ke Baitullah bagi yang mampu.',
+            'Rincian 5 Rukun Islam',
+            'Berikut adalah urutan lima rukun Islam yang wajib kita laksanakan dalam kehidupan sehari-hari:',
+            '["1. Syahadat: Mengucapkan persaksian tiada Tuhan selain Allah & Muhammad utusan Allah.", "2. Shalat: Beribadah 5 waktu sehari semalam (Subuh, Dzuhur, Ashar, Maghrib, Isya).", "3. Zakat: Menyisihkan sebagian harta untuk saudara yang membutuhkan.", "4. Puasa Ramadhan: Menahan makan, minum, dan hawa nafsu dari fajar hingga maghrib.", "5. Naik Haji: Beribadah ke Baitullah di Makkah bagi yang mampu."]'::jsonb,
+            'Keutamaan Puasa',
+            'Pintu surga khusus bernama Ar-Rayyan disediakan Allah khusus bagi orang-orang yang rajin berpuasa!'
+        );
+    END IF;
+
+    -- 2. BAB 2: Panduan Sholat 5 Waktu
+    IF NOT EXISTS (SELECT 1 FROM public.materi_chapters WHERE title = 'Panduan Sholat 5 Waktu') THEN
+        INSERT INTO public.materi_chapters (
+            category_id, category_name, theme_id, chapter_number, title, description, cover_icon, is_published
+        ) VALUES (
+            v_cat_shalat, 'Shalat', 'islamic', 1,
+            'Panduan Sholat 5 Waktu',
+            'Panduan visual ibadah sholat fardhu harian lengkap dengan keutamaan shalat tepat waktu.',
+            '🧎', true
+        ) RETURNING id INTO v_ch2_id;
+
+        -- Halaman 1 Bab 2
+        INSERT INTO public.materi_pages (
+            chapter_id, page_number, left_content_type, left_media_url, left_media_type, left_audio_text,
+            right_title, right_story_text, bullet_points,
+            dalil_title, dalil_arabic, dalil_latin, dalil_translation, dalil_source,
+            fun_fact_title, fun_fact_description
+        ) VALUES (
+            v_ch2_id, 1, 'media', '/image/sticker/islami/tasbihscreen.png', 'image',
+            'Sholat adalah tiang agama dan bentuk komunikasi langsung seorang hamba dengan Allah SWT.',
+            'Sholat 5 Waktu Harian Kita',
+            'Sholat fardhu wajib dikerjakan oleh setiap muslim yang sudah baligh sebanyak 5 waktu sehari semalam.',
+            '["1. Subuh: 2 Rakaat di waktu fajar sebelum terbit matahari.", "2. Dzuhur: 4 Rakaat di siang hari saat matahari tergelincir.", "3. Ashar: 4 Rakaat di sore hari.", "4. Maghrib: 3 Rakaat saat matahari terbenam.", "5. Isya: 4 Rakaat di malam hari."]'::jsonb,
+            'Kewajiban Sholat Tepat Waktu',
+            'إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَوْقُوتًا',
+            'Innas-shalaata kaanat ''alal-mu''miniina kitaabam-mauquutaa.',
+            'Sesungguhnya shalat itu adalah kewajiban yang ditentukan waktunya atas orang-orang yang beriman.',
+            'QS. An-Nisa: 103',
+            'Pahala Berjamaah',
+            'Sholat berjamaah di masjid atau bersama keluarga melipatgandakan pahala hingga 27 derajat!'
+        );
+    END IF;
+
+    -- 3. BAB 3: Kisah Singkat Nabi & Rasul
+    IF NOT EXISTS (SELECT 1 FROM public.materi_chapters WHERE title = 'Kisah Singkat Nabi & Rasul Utusan Allah') THEN
+        INSERT INTO public.materi_chapters (
+            category_id, category_name, theme_id, chapter_number, title, description, cover_icon, is_published
+        ) VALUES (
+            v_cat_nabi, 'Nabi dan Rasul', 'islamic', 1,
+            'Kisah Singkat Nabi & Rasul Utusan Allah',
+            'Meneladani keberanian, kesabaran, dan akhlak mulia para Nabi Ulul Azmi melalui kisah bergambar.',
+            '📜', true
+        ) RETURNING id INTO v_ch3_id;
+
+        -- Halaman 1 Bab 3
+        INSERT INTO public.materi_pages (
+            chapter_id, page_number, left_content_type, left_media_url, left_media_type, left_audio_text,
+            right_title, right_story_text, bullet_points,
+            fun_fact_title, fun_fact_description
+        ) VALUES (
+            v_ch3_id, 1, 'media', '/image/sticker/islami/bukubiru.png', 'image',
+            'Nabi Adam AS adalah manusia pertama yang diciptakan Allah SWT dari tanah sebagai khalifah di bumi.',
+            'Nabi Adam AS - Manusia Pertama',
+            'Nabi Adam AS diciptakan sebagai nenek moyang seluruh umat manusia dan diajarkan nama-nama benda oleh Allah SWT.',
+            '["Nabi Adam AS diciptakan oleh Allah SWT dari tanah.", "Allah mengajarkan nama-nama benda kepada Nabi Adam sehingga malaikat pun kagum.", "Nabi Adam mengajarkan kita untuk senantiasa bertobat ketika berbuat salah."]'::jsonb,
+            'Pelajaran Berharga',
+            'Jika kita berbuat salah, jangan malu untuk segera memohon ampunan kepada Allah dan meminta maaf!'
+        );
+    END IF;
+END $$;
+

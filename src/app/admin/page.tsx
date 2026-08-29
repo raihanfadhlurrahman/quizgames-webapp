@@ -14,6 +14,7 @@ import { parseUniversalCSVText, ParsedQuestionResult } from '@/lib/csvParser';
 import { exportQuestionsToCSV } from '@/lib/csvExporter';
 import { INITIAL_QUESTIONS, INITIAL_CATEGORIES } from '@/data/seedQuestions';
 import { RoomHostView } from '@/components/RoomHostView';
+import AdminMateriManager from '@/components/AdminMateriManager';
 
 const DEFAULT_THEME_CATEGORIES: Record<string, string[]> = {
   islamic: ['Aqidah', 'Akhlak', 'Adab', "Al-Qur'an", 'Fiqih', 'Sejarah Islam'],
@@ -28,7 +29,7 @@ export default function AdminPage() {
   const [authErrorMessage, setAuthErrorMessage] = useState<string>('');
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
-  const [adminTab, setAdminTab] = useState<'QUESTIONS' | 'CATEGORIES' | 'ROOMS' | 'PLAYERS'>('QUESTIONS');
+  const [adminTab, setAdminTab] = useState<'QUESTIONS' | 'CATEGORIES' | 'ROOMS' | 'PLAYERS' | 'MATERI'>('QUESTIONS');
   const [activeHostRoom, setActiveHostRoom] = useState<QuizRoom | null>(null);
   const [isRoomFormOpen, setIsRoomFormOpen] = useState<boolean>(false);
   const [newRoomTitle, setNewRoomTitle] = useState<string>('Kuis Live Sosialisasi KKN');
@@ -729,6 +730,22 @@ export default function AdminPage() {
                 {playersList.length}
               </span>
             </button>
+
+            <button
+              onClick={() => setAdminTab('MATERI')}
+              className={`w-full px-4 py-3 rounded-2xl font-black text-xs flex items-center justify-between transition cursor-pointer ${adminTab === 'MATERI'
+                ? 'bg-[#E0F2F1] text-[#00796B] shadow-2xs border border-[#B2DFDB]'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent font-bold'
+                }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">📖</span>
+                <span>Buku & Materi</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-white text-slate-700 text-[10px] font-black border border-slate-200">
+                Modul
+              </span>
+            </button>
           </nav>
 
           {/* Guide Card Box with Mascot Graphic */}
@@ -825,6 +842,13 @@ export default function AdminPage() {
                   <span>👥 Pemain & Skor</span>
                   <span className="px-2 py-0.5 bg-white rounded-full text-[10px] border border-slate-200">{playersList.length}</span>
                 </button>
+                <button
+                  onClick={() => { setAdminTab('MATERI'); setIsMobileSidebarOpen(false); }}
+                  className={`w-full px-4 py-3 rounded-2xl font-black text-xs flex items-center justify-between ${adminTab === 'MATERI' ? 'bg-[#E0F2F1] text-[#00796B] border border-[#B2DFDB]' : 'text-slate-600 bg-slate-50'}`}
+                >
+                  <span>📖 Buku & Materi</span>
+                  <span className="px-2 py-0.5 bg-white rounded-full text-[10px] border border-slate-200">Modul</span>
+                </button>
               </nav>
             </div>
 
@@ -842,7 +866,7 @@ export default function AdminPage() {
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 h-full overflow-y-auto p-3 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full min-w-0 bg-[#F7F9F6] custom-scrollbar" style={{ backgroundColor: '#F7F9F6' }}>
         {/* MOBILE TOP NAV (Visible only on small screens) */}
-        <div className="block lg:hidden space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="block lg:hidden space-y-3 bg-[#FFFDF3] p-4 rounded-2xl border border-amber-200 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
@@ -885,6 +909,12 @@ export default function AdminPage() {
             >
               👥 Pemain ({playersList.length})
             </button>
+            <button
+              onClick={() => setAdminTab('MATERI')}
+              className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap ${adminTab === 'MATERI' ? 'bg-[#00796B] text-white' : 'bg-slate-100 text-slate-600'}`}
+            >
+              📖 Materi
+            </button>
           </div>
         </div>
 
@@ -912,6 +942,7 @@ export default function AdminPage() {
                 {adminTab === 'CATEGORIES' && 'Atur topik kategori dan ikon emoji sesuai masing-masing tema.'}
                 {adminTab === 'ROOMS' && 'Buat dan jalankan sesi kuis live bersama peserta dari HP/Device.'}
                 {adminTab === 'PLAYERS' && 'Pantau perolehan Poin Amal, Wawasan, Budaya, dan akumulasi statistik.'}
+                {adminTab === 'MATERI' && 'Kelola bab modul belajar & halaman buku digital untuk anak-anak.'}
               </p>
             </div>
           </div>
@@ -1944,7 +1975,7 @@ export default function AdminPage() {
               )}
             </div>
           </div>
-        ) : (
+        ) : adminTab === 'PLAYERS' ? (
           /* PLAYERS MANAGEMENT TAB */
           <div className="space-y-6">
             {/* SELECTIVE RESET ACTION BAR BANNER */}
@@ -2084,7 +2115,11 @@ export default function AdminPage() {
               )}
             </div>
           </div>
-        )}
+        ) : adminTab === 'MATERI' ? (
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs">
+            <AdminMateriManager />
+          </div>
+        ) : null}
 
         {/* SMART UNIVERSAL IMPORT MODAL (PASTE / FILE + PREVIEW TABLE) */}
         {isImportModalOpen && (
@@ -2369,8 +2404,8 @@ export default function AdminPage() {
                 <button
                   onClick={() => { setGuideActiveTab('SOAL'); setGuideSubTab(0); }}
                   className={`px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${guideActiveTab === 'SOAL'
-                      ? 'bg-[#2D6A4F] text-white shadow-md'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    ? 'bg-[#2D6A4F] text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                     }`}
                 >
                   <span>📚 1. Bank Soal & Impor CSV</span>
@@ -2379,8 +2414,8 @@ export default function AdminPage() {
                 <button
                   onClick={() => { setGuideActiveTab('KATEGORI'); setGuideSubTab(0); }}
                   className={`px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${guideActiveTab === 'KATEGORI'
-                      ? 'bg-[#D97706] text-white shadow-md'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    ? 'bg-[#D97706] text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                     }`}
                 >
                   <span>🏷️ 2. Kelola Kategori</span>
@@ -2389,8 +2424,8 @@ export default function AdminPage() {
                 <button
                   onClick={() => { setGuideActiveTab('ROOMS'); setGuideSubTab(0); }}
                   className={`px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${guideActiveTab === 'ROOMS'
-                      ? 'bg-[#2563EB] text-white shadow-md'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    ? 'bg-[#2563EB] text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                     }`}
                 >
                   <span>🎮 3. Sesi Room Live (Proyektor)</span>
@@ -2399,8 +2434,8 @@ export default function AdminPage() {
                 <button
                   onClick={() => { setGuideActiveTab('PLAYERS'); setGuideSubTab(0); }}
                   className={`px-4 py-2.5 rounded-2xl font-black text-xs flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${guideActiveTab === 'PLAYERS'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    ? 'bg-purple-600 text-white shadow-md'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                     }`}
                 >
                   <span>👥 4. Pemain & Skor</span>

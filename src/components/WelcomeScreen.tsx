@@ -33,6 +33,7 @@ interface WelcomeScreenProps {
   onStart: () => void;
   onOpenRoomJoin?: () => void;
   onOpenLeaderboard?: () => void;
+  onOpenEducation?: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   userProfile?: UserProfileData;
@@ -43,6 +44,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onStart,
   onOpenRoomJoin,
   onOpenLeaderboard,
+  onOpenEducation,
   isMuted,
   onToggleMute,
   userProfile: initialProfile,
@@ -308,28 +310,27 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </div>
               </motion.button>
 
-              {/* 📜 MATERI ISLAMI (LOCKED / COMING SOON) */}
+              {/* 📜 MATERI EDUKASI INTERAKTIF */}
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => handleButtonClick(() => {
-                  if (profile && profile.id) {
-                    setActiveModal('MATERI');
+                  if (onOpenEducation) {
+                    onOpenEducation();
                   } else {
-                    setShowAuthModal(true);
+                    setActiveModal('MATERI');
                   }
                 })}
-                className="w-full py-1.5 md:py-2 px-4 rounded-xl bg-[#FFFDF3]/90 border-3 border-slate-300 shadow-[0_2.5px_0_#94A3B8] text-slate-600 font-bold text-xs md:text-sm flex items-center justify-between transition cursor-pointer relative"
+                className="w-full py-2 px-4 rounded-xl bg-[#E8F5E9] hover:bg-[#C8E6C9] border-2 border-[#81C784] shadow-[0_3px_0_#388E3C] text-[#1B5E20] font-extrabold text-xs md:text-sm flex items-center justify-between transition cursor-pointer relative"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-6.5 h-6.5 md:w-7 md:h-7 rounded-full bg-slate-200 border-2 border-slate-300 flex items-center justify-center text-xs grayscale">
+                  <div className="w-7 h-7 rounded-full bg-[#2D6A4F] text-white flex items-center justify-center text-xs">
                     📖
                   </div>
-                  <span className="tracking-wide text-slate-600 uppercase">Materi Edukasi</span>
+                  <span className="tracking-wide uppercase font-black text-[#1B5E20]">MATERI EDUKASI</span>
                 </div>
-                <div className="flex items-center gap-1 bg-amber-500/20 text-amber-800 text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-amber-400">
-                  <Lock className="w-2.5 h-2.5 text-amber-600" />
-                  <span>COMING SOON</span>
+                <div className="flex items-center gap-1 bg-[#2D6A4F] text-[#FDE68A] text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs border border-amber-300">
+                  <span>✨ INTERACTIVE</span>
                 </div>
               </motion.button>
 

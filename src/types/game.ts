@@ -100,7 +100,7 @@ export interface QuizRoomPlayer {
   joined_at?: string;
 }
 
-export type GameState = 'WELCOME' | 'SETUP' | 'PLAYING' | 'FEEDBACK' | 'SUMMARY' | 'LEADERBOARD';
+export type GameState = 'WELCOME' | 'SETUP' | 'PLAYING' | 'FEEDBACK' | 'SUMMARY' | 'LEADERBOARD' | 'EDUCATION_PORTAL' | 'EDUCATION_READER' | 'EDUCATION_CHAPTERS' | 'EDUCATION_BOOK';
 
 export type LeaderboardTab = 'ALL' | 'ISLAMIC' | 'INDEPENDENCE' | 'CULTURE' | 'QUROOM';
 
