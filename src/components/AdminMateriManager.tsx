@@ -1484,7 +1484,7 @@ export const AdminMateriManager: React.FC = () => {
 
                   <div className="w-full rounded-2xl overflow-hidden border-2 border-amber-300 shadow-lg relative bg-slate-900 h-[480px]">
                     <EducationBook
-                      chapter={activeChapter || { id: 'preview', title: 'Pratinjau', description: '', category_id: '', category_name: '', theme_id: 'islamic', chapter_number: 1, is_published: true, total_pages: 1, created_at: '', updated_at: '' }}
+                      chapter={activeChapter || { id: 'preview', title: 'Pratinjau', description: '', cover_icon: '📖', category_id: '', category_name: '', theme_id: 'islamic', chapter_number: 1, is_published: true, total_pages: 1, created_at: '', updated_at: '' }}
                       initialPages={[createDraftPageFromForm()]}
                       onBack={() => setPageFormTab('CONTENT')}
                       isPreviewMode={true}
