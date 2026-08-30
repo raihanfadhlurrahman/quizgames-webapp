@@ -16,6 +16,8 @@ interface EducationBookProps {
   isMuted?: boolean;
   onToggleMute?: () => void;
   player?: PlayerProfile | null;
+  initialPages?: MateriPage[];
+  isPreviewMode?: boolean;
 }
 
 type ModalType = 'DALIL' | 'FUNFACT' | 'MEDIA_ZOOM' | null;
@@ -52,9 +54,11 @@ export default function EducationBook({
   isMuted = false,
   onToggleMute,
   player,
+  initialPages,
+  isPreviewMode = false,
 }: EducationBookProps) {
-  const [pages, setPages] = useState<MateriPage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [pages, setPages] = useState<MateriPage[]>(initialPages || []);
+  const [loading, setLoading] = useState(!initialPages || initialPages.length === 0);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [activeMediaZoom, setActiveMediaZoom] = useState<{ url: string; type: string; title?: string } | null>(null);
@@ -67,11 +71,16 @@ export default function EducationBook({
   useEffect(() => {
     const p = ProfileService.getProfile();
     setProfileData(p);
-    setLoading(true);
-    EducationService.getPagesByChapter(chapter.id)
-      .then((res) => { setPages(res); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [chapter.id]);
+    if (initialPages && initialPages.length > 0) {
+      setPages(initialPages);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      EducationService.getPagesByChapter(chapter.id)
+        .then((res) => { setPages(res); setLoading(false); })
+        .catch(() => setLoading(false));
+    }
+  }, [chapter.id, initialPages]);
 
   useEffect(() => { stopSpeaking(); }, [currentPageIndex, isMuted]);
   useEffect(() => { return () => stopSpeaking(); }, []);
@@ -191,8 +200,17 @@ export default function EducationBook({
           <img src="/image/elemenbuku/kembalibutton.png" alt="Kembali" className="w-full h-full object-contain" />
         </button>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/* Spacer / Preview Badge */}
+        {isPreviewMode ? (
+          <div className="flex-1 flex justify-center">
+            <div className="bg-amber-400/95 text-amber-950 px-4 py-1 rounded-full border-2 border-amber-200 shadow-md text-xs font-black flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span>👁️ MODE PRATINJAU BUKU (ADMIN)</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* Profil card — identik dengan EducationChapterList & EducationPortal */}
         <div className="flex items-center gap-3 flex-shrink-0">

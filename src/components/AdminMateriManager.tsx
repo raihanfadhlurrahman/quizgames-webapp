@@ -30,6 +30,7 @@ import { Category } from '@/types/game';
 import { EducationService } from '@/lib/educationService';
 import { GameService } from '@/lib/gameService';
 import { getYouTubeThumbnailUrl, getYouTubeWatchUrl, isYouTubeUrl } from '@/lib/youtubeHelper';
+import EducationBook from '@/components/EducationBook';
 
 const STICKER_PRESETS = [
   { label: 'Masjid', url: '/image/sticker/islami/masjid.png' },
@@ -76,7 +77,7 @@ export const AdminMateriManager: React.FC = () => {
   // Page Modal State
   const [isPageModalOpen, setIsPageModalOpen] = useState<boolean>(false);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
-  const [pageFormTab, setPageFormTab] = useState<'CONTENT' | 'INTERACTIVE'>('CONTENT');
+  const [pageFormTab, setPageFormTab] = useState<'CONTENT' | 'INTERACTIVE' | 'PREVIEW'>('CONTENT');
   const [pageForm, setPageForm] = useState<Partial<MateriPage>>({
     page_number: 1,
     left_content_type: 'media',
@@ -97,10 +98,78 @@ export const AdminMateriManager: React.FC = () => {
     fun_fact_description: '',
   });
 
+  // Book Preview Modal State
+  const [isPreviewBookOpen, setIsPreviewBookOpen] = useState<boolean>(false);
+  const [previewChapter, setPreviewChapter] = useState<MateriChapter | null>(null);
+  const [previewPages, setPreviewPages] = useState<MateriPage[]>([]);
+
   // TTS Speech Test State & Upload States
   const [isPlayingTTS, setIsPlayingTTS] = useState<boolean>(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState<boolean>(false);
   const [isUploadingAudio, setIsUploadingAudio] = useState<boolean>(false);
+
+  // Preview Handlers
+  const handleOpenChapterPreview = async (chapter: MateriChapter) => {
+    setPreviewChapter(chapter);
+    try {
+      const pList = await EducationService.getPagesByChapter(chapter.id);
+      setPreviewPages(pList);
+      setIsPreviewBookOpen(true);
+    } catch (err: any) {
+      alert(`Gagal memuat pratinjau buku: ${err.message}`);
+    }
+  };
+
+  const handleOpenCurrentPagesPreview = () => {
+    if (!activeChapter) return;
+    setPreviewChapter(activeChapter);
+    setPreviewPages(pages);
+    setIsPreviewBookOpen(true);
+  };
+
+  const createDraftPageFromForm = (): MateriPage => {
+    return {
+      id: editingPageId || 'draft-page-preview',
+      chapter_id: activeChapter?.id || '',
+      page_number: pageForm.page_number || 1,
+      left_content_type: pageForm.left_content_type || 'media',
+      left_media_type: pageForm.left_media_type || 'image',
+      left_media_url: pageForm.left_media_url || '',
+      left_audio_url: pageForm.left_audio_url || '',
+      left_audio_text: pageForm.left_audio_text || '',
+      left_title: pageForm.left_title || '',
+      left_text: pageForm.left_text || '',
+      right_title: pageForm.right_title || '',
+      right_story_text: pageForm.right_story_text || '',
+      bullet_points: pageForm.bullet_points || [],
+      dalil_title: pageForm.dalil_title || '',
+      dalil_arabic: pageForm.dalil_arabic || '',
+      dalil_latin: pageForm.dalil_latin || '',
+      dalil_translation: pageForm.dalil_translation || '',
+      dalil_source: pageForm.dalil_source || '',
+      fun_fact_title: pageForm.fun_fact_title || '',
+      fun_fact_description: pageForm.fun_fact_description || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  };
+
+  const handlePreviewCurrentDraftPage = () => {
+    if (!activeChapter) return;
+    const draft = createDraftPageFromForm();
+    const existingIndex = pages.findIndex((p) => p.id === editingPageId);
+    let updatedPreviewPages: MateriPage[] = [];
+    if (existingIndex >= 0) {
+      updatedPreviewPages = [...pages];
+      updatedPreviewPages[existingIndex] = draft;
+    } else {
+      updatedPreviewPages = [...pages, draft];
+    }
+    updatedPreviewPages.sort((a, b) => a.page_number - b.page_number);
+    setPreviewChapter(activeChapter);
+    setPreviewPages(updatedPreviewPages);
+    setIsPreviewBookOpen(true);
+  };
 
   const handleUploadMediaFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -677,6 +746,14 @@ export const AdminMateriManager: React.FC = () => {
 
                       <div className="flex items-center gap-1.5">
                         <button
+                          onClick={() => handleOpenChapterPreview(ch)}
+                          className="px-2.5 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                          title="Pratinjau Tampilan Buku Pemain"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Pratinjau</span>
+                        </button>
+                        <button
                           onClick={() => loadChapterPages(ch)}
                           className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-extrabold transition flex items-center gap-1 cursor-pointer shadow-xs"
                         >
@@ -718,13 +795,24 @@ export const AdminMateriManager: React.FC = () => {
                 <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Bab
               </button>
 
-              <button
-                onClick={handleOpenNewPageModal}
-                className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white px-4 py-2.5 rounded-2xl font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>TAMBAH HALAMAN BUKU BARU</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleOpenCurrentPagesPreview}
+                  className="bg-amber-500 hover:bg-amber-600 text-amber-950 border border-amber-300 px-4 py-2.5 rounded-2xl font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  title="Pratinjau seluruh halaman dalam Bab ini"
+                >
+                  <Eye className="w-4 h-4 text-amber-950" />
+                  <span>PRATINJAU TAMPILAN BUKU</span>
+                </button>
+
+                <button
+                  onClick={handleOpenNewPageModal}
+                  className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white px-4 py-2.5 rounded-2xl font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>TAMBAH HALAMAN BUKU BARU</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-3.5 pt-2 border-t border-slate-100">
@@ -1057,12 +1145,23 @@ export const AdminMateriManager: React.FC = () => {
                   Bab: {activeChapter?.title}
                 </p>
               </div>
-              <button
-                onClick={() => setIsPageModalOpen(false)}
-                className="p-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePreviewCurrentDraftPage}
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  title="Buka Pratinjau Buku Layar Penuh dengan halaman ini"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Uji Pratinjau Buku</span>
+                </button>
+                <button
+                  onClick={() => setIsPageModalOpen(false)}
+                  className="p-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Sub-Tabs */}
@@ -1073,7 +1172,7 @@ export const AdminMateriManager: React.FC = () => {
                 className={`flex-1 py-2 rounded-xl text-xs font-black transition ${pageFormTab === 'CONTENT' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
-                📖 Konten Utama (Visual & Teks)
+                📖 Konten Utama
               </button>
               <button
                 type="button"
@@ -1081,7 +1180,15 @@ export const AdminMateriManager: React.FC = () => {
                 className={`flex-1 py-2 rounded-xl text-xs font-black transition ${pageFormTab === 'INTERACTIVE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
-                ✨ Modal Interaktif (Dalil & Fun Fact)
+                ✨ Modal Interaktif
+              </button>
+              <button
+                type="button"
+                onClick={() => setPageFormTab('PREVIEW')}
+                className={`flex-1 py-2 rounded-xl text-xs font-black transition ${pageFormTab === 'PREVIEW' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+              >
+                👁️ Pratinjau Live Buku
               </button>
             </div>
 
@@ -1353,6 +1460,37 @@ export const AdminMateriManager: React.FC = () => {
                     </div>
                   </div>
                 </div>
+              ) : pageFormTab === 'PREVIEW' ? (
+                /* LIVE PREVIEW TAB */
+                <div className="space-y-3">
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold text-amber-900">
+                        👁️ Pratinjau Live Halaman Buku (Draft)
+                      </span>
+                      <span className="text-[10px] bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-md">
+                        Sizing & Visual 100% Persis Pemain
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePreviewCurrentDraftPage}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Buka Layar Penuh</span>
+                    </button>
+                  </div>
+
+                  <div className="w-full rounded-2xl overflow-hidden border-2 border-amber-300 shadow-lg relative bg-slate-900 h-[480px]">
+                    <EducationBook
+                      chapter={activeChapter || { id: 'preview', title: 'Pratinjau', description: '', category_id: '', category_name: '', theme_id: 'islamic', chapter_number: 1, is_published: true, total_pages: 1, created_at: '', updated_at: '' }}
+                      initialPages={[createDraftPageFromForm()]}
+                      onBack={() => setPageFormTab('CONTENT')}
+                      isPreviewMode={true}
+                    />
+                  </div>
+                </div>
               ) : (
                 /* INTERACTIVE TAB (DALIL & FUN FACT) */
                 <div className="space-y-4">
@@ -1487,6 +1625,25 @@ export const AdminMateriManager: React.FC = () => {
           </motion.div>
         </div>
       )}
+
+      {/* FULL SCREEN BOOK PREVIEW MODAL OVERLAY */}
+      <AnimatePresence>
+        {isPreviewBookOpen && previewChapter && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 flex flex-col justify-between"
+          >
+            <EducationBook
+              chapter={previewChapter}
+              initialPages={previewPages}
+              onBack={() => setIsPreviewBookOpen(false)}
+              isPreviewMode={true}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
