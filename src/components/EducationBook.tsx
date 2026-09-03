@@ -180,8 +180,8 @@ export default function EducationBook({
     ? currentPage.bullet_points as string[]
     : (() => { try { return JSON.parse(currentPage.bullet_points as unknown as string) as string[]; } catch { return []; } })();
 
-  const hasDalil = !!(currentPage.dalil_arabic || currentPage.dalil_translation);
-  const hasFunFact = !!currentPage.fun_fact_description;
+  const hasDalil = !!(currentPage.dalil_title || currentPage.dalil_arabic || currentPage.dalil_translation);
+  const hasFunFact = !!(currentPage.fun_fact_title || currentPage.fun_fact_description);
   const audioText = currentPage.left_audio_text || currentPage.right_story_text || '';
 
   return (

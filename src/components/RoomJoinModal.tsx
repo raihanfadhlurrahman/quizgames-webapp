@@ -159,21 +159,21 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
 
           {!joinedRoom ? (
             /* PIN ENTRY FORM */
-            <div className="space-y-5 text-center">
-              <div className="w-16 h-16 rounded-3xl bg-amber-500/20 text-amber-800 border-2 border-amber-400 flex items-center justify-center mx-auto shadow-inner">
-                <KeyRound className="w-8 h-8 text-amber-700" />
+            <div className="space-y-5 text-center pt-2">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-amber-500 text-amber-950 border-4 border-amber-200 flex items-center justify-center mx-auto shadow-xl animate-bounce">
+                <KeyRound className="w-10 h-10 text-amber-950 stroke-[2.5]" />
               </div>
 
               <div>
-                <h2 className="text-xl font-black text-[#78350F]">Masuk Room Kuis PIN</h2>
-                <p className="text-xs text-amber-800 font-semibold mt-1">
-                  Masukkan 6-digit kode PIN yang ditampilkan di proyektor Admin
+                <h2 className="text-2xl font-black text-[#78350F] tracking-tight">Masuk Room Kuis PIN 🎮</h2>
+                <p className="text-xs text-amber-900 font-bold mt-1 max-w-xs mx-auto">
+                  Masukkan 6-digit kode PIN yang ada di proyektor/layar Operator
                 </p>
               </div>
 
               <form onSubmit={handleJoin} className="space-y-4">
                 {errorMsg && (
-                  <div className="p-3 bg-red-100 border border-red-300 rounded-2xl text-xs font-bold text-red-700 flex items-center gap-2 text-left">
+                  <div className="p-3 bg-red-100 border-2 border-red-300 rounded-2xl text-xs font-black text-red-700 flex items-center gap-2 text-left shadow-sm">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     <span>{errorMsg}</span>
                   </div>
@@ -187,23 +187,25 @@ export const RoomJoinModal: React.FC<RoomJoinModalProps> = ({
                     placeholder="849201"
                     value={pin}
                     onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                    className="w-full text-center text-3xl font-black tracking-[0.3em] py-3.5 px-4 bg-amber-50/80 border-4 border-amber-300 rounded-2xl text-[#78350F] placeholder-amber-300 focus:outline-none focus:border-amber-600 shadow-inner uppercase"
+                    className="w-full text-center text-3xl md:text-4xl font-black tracking-[0.3em] py-4 px-4 bg-amber-50 border-4 border-amber-400 rounded-3xl text-[#78350F] placeholder-amber-300 focus:outline-none focus:border-amber-600 shadow-inner uppercase font-mono"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading || pin.length !== 6}
-                  className={`emerald-gradient-btn w-full py-3.5 rounded-2xl text-white font-black text-base shadow-lg cursor-pointer flex items-center justify-center gap-2 transition ${
-                    loading || pin.length !== 6 ? 'opacity-50 pointer-events-none' : 'active:scale-95'
+                  className={`w-full py-4 rounded-2xl text-white font-black text-lg bg-gradient-to-r from-emerald-600 to-teal-600 border-2 border-emerald-300 shadow-[0_6px_0_#065f46] cursor-pointer flex items-center justify-center gap-2 transition duration-150 ${
+                    loading || pin.length !== 6
+                      ? 'opacity-50 pointer-events-none'
+                      : 'hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#065f46]'
                   }`}
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
                     <>
-                      <span>MASUK ROOM</span>
-                      <Play className="w-4 h-4 fill-current" />
+                      <span>MASUK ROOM SEKARANG</span>
+                      <Play className="w-5 h-5 fill-current" />
                     </>
                   )}
                 </button>

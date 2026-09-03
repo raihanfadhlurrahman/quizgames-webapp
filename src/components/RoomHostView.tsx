@@ -135,17 +135,34 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
   const currentQ = questions[currentQIndex];
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 
+  const KAHOOT_SHAPES = {
+    A: { shape: '▲', label: 'Segitiga', bg: 'from-rose-600 to-red-700 border-red-400' },
+    B: { shape: '◆', label: 'Ketupat', bg: 'from-sky-600 to-blue-700 border-blue-400' },
+    C: { shape: '●', label: 'Lingkaran', bg: 'from-amber-500 to-yellow-600 border-yellow-300' },
+    D: { shape: '■', label: 'Persegi', bg: 'from-emerald-600 to-teal-700 border-emerald-400' },
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F172A] text-white flex flex-col font-sans select-none overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 bg-[#0F172A] text-white flex flex-col font-sans select-none overflow-hidden"
+      style={{
+        backgroundImage: "url('/image/kahoot_arena_bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-[#0F172A]/80 backdrop-blur-xs pointer-events-none" />
+
       {/* TOP ADMIN CONTROL BAR */}
-      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shadow-md">
+      <div className="relative z-10 flex items-center justify-between p-4 bg-slate-900/90 border-b border-slate-800 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="px-3 py-1 bg-amber-500/20 border border-amber-500/40 rounded-xl text-amber-400 font-mono font-black text-sm">
+          <div className="px-3.5 py-1.5 bg-amber-500/20 border border-amber-400/50 rounded-xl text-amber-300 font-mono font-black text-base shadow-sm">
             PIN: {currentRoom.room_code}
           </div>
           <div>
             <h2 className="font-extrabold text-sm md:text-base gold-gradient-text">{currentRoom.title}</h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-300">
               Kategori: <span className="text-emerald-400 font-bold">{currentRoom.category_name}</span> • Status Sesi:{' '}
               <span className="uppercase text-amber-400 font-extrabold">{currentRoom.status}</span>
             </p>
@@ -154,7 +171,7 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
 
         <button
           onClick={handleCloseRoom}
-          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-black rounded-xl border border-red-500/40 cursor-pointer flex items-center gap-1.5 transition active:scale-95"
+          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-black rounded-xl border border-red-500/40 cursor-pointer flex items-center gap-1.5 transition active:scale-95 shadow-md"
           title="Akhiri Sesi Room Kuis"
         >
           <X className="w-4 h-4 text-red-400" />
@@ -163,36 +180,36 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
       </div>
 
       {/* MAIN PROYECTOR DISPLAY AREA */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
         {/* FASE 1: WAITING LOBBY (PIN & JOINED PLAYERS GRID) */}
         {currentRoom.status === 'waiting' && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl w-full space-y-8">
             <div className="space-y-3">
-              <span className="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/30">
-                Layar Proyektor KKN Wedomartani
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-4 py-1.5 rounded-full border border-emerald-400/40 shadow-sm">
+                📢 Layar Proyektor KKN Wedomartani
               </span>
-              <h1 className="text-3xl md:text-5xl font-black gold-gradient-text">GABUNG SEKARANG KE KUIS!</h1>
-              <p className="text-slate-300 text-sm md:text-base">
-                Buka web kuis di HP Anda, tekan tombol <strong className="text-amber-400">Masuk Room PIN</strong> dan masukkan kode:
+              <h1 className="text-3xl md:text-5xl font-black gold-gradient-text tracking-wide">GABUNG SEKARANG KE KUIS!</h1>
+              <p className="text-slate-200 text-sm md:text-base font-medium">
+                Buka website di HP Anda, pilih <strong className="text-amber-300">Masuk Room PIN</strong> dan masukkan kode:
               </p>
             </div>
 
-            {/* GIANT PIN CARD */}
-            <div className="py-6 px-10 bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-amber-500/20 border-4 border-amber-400 rounded-3xl inline-block shadow-2xl backdrop-blur-md">
-              <span className="text-5xl md:text-7xl font-mono font-black text-amber-300 tracking-[0.25em]">
+            {/* GIANT 3D PIN CARD */}
+            <div className="py-6 px-12 bg-slate-900/90 border-4 border-amber-400 rounded-3xl inline-block shadow-2xl backdrop-blur-md">
+              <span className="text-6xl md:text-8xl font-mono font-black text-amber-300 tracking-[0.25em] drop-shadow-md">
                 {currentRoom.room_code.slice(0, 3)} {currentRoom.room_code.slice(3)}
               </span>
             </div>
 
             {/* JOINED PLAYERS GRID WITH PP & BORDER OVERLAY */}
             <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-center gap-2 text-sm font-bold text-slate-300">
-                <Users className="w-5 h-5 text-emerald-400" />
+              <div className="flex items-center justify-center gap-2 text-base font-black text-slate-200">
+                <Users className="w-6 h-6 text-emerald-400" />
                 <span>{players.length} Pemain Telah Terhubung</span>
               </div>
 
               {players.length === 0 ? (
-                <p className="text-xs text-slate-500 animate-pulse">Menunggu pemain pertama memasukkan PIN...</p>
+                <p className="text-xs text-slate-400 animate-pulse font-semibold">Menunggu pemain pertama memasukkan PIN...</p>
               ) : (
                 <div className="flex flex-wrap justify-center gap-3 max-h-60 overflow-y-auto p-2">
                   {players.map((p) => (
@@ -200,7 +217,7 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                       key={p.id || p.player_id}
                       initial={{ opacity: 0, scale: 0.5 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="flex items-center gap-3 px-4 py-2 bg-slate-900/90 border border-slate-700 rounded-2xl shadow-md text-sm font-bold"
+                      className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/90 border-2 border-amber-400/40 rounded-2xl shadow-xl text-sm font-extrabold"
                     >
                       {/* Avatar with Border Overlay */}
                       <div className="relative w-9 h-9 flex items-center justify-center flex-shrink-0">
@@ -226,11 +243,11 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
             </div>
 
             {/* START BUTTON */}
-            <div className="pt-4">
+            <div className="pt-4 flex-shrink-0">
               <button
                 onClick={handleStartGame}
                 disabled={loading || players.length === 0}
-                className={`emerald-gradient-btn px-10 py-4 rounded-2xl text-white font-black text-xl shadow-2xl cursor-pointer flex items-center justify-center gap-3 mx-auto transition ${
+                className={`emerald-gradient-btn min-h-[58px] px-10 py-4 rounded-2xl text-white font-black text-xl shadow-2xl flex-shrink-0 cursor-pointer flex items-center justify-center gap-3 mx-auto transition duration-150 ${
                   loading || players.length === 0 ? 'opacity-50 pointer-events-none' : 'hover:scale-105 active:scale-95'
                 }`}
               >
@@ -238,7 +255,7 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                   <RefreshCw className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    <Play className="w-6 h-6 fill-current" />
+                    <Play className="w-7 h-7 fill-current flex-shrink-0" />
                     <span>MULAI KUIS SOSIALISASI</span>
                   </>
                 )}
@@ -250,17 +267,17 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
         {/* FASE 2: QUESTION DISPLAY (TIMER 20s) */}
         {currentRoom.status === 'question' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl w-full space-y-6">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-400 bg-slate-900/90 p-3 rounded-2xl border border-slate-800 shadow-md">
-              <span>Soal <strong className="text-white">{currentQIndex + 1}</strong> dari {questions.length}</span>
-              <span className="text-emerald-400 font-extrabold uppercase">Kategori: {currentRoom.category_name}</span>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 rounded-full border border-amber-400/40 text-amber-300 font-mono font-black text-sm">
-                <Clock className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center justify-between text-xs font-bold text-slate-300 bg-slate-900/90 p-3.5 rounded-2xl border border-slate-800 shadow-md">
+              <span>Soal <strong className="text-white text-sm">{currentQIndex + 1}</strong> dari {questions.length}</span>
+              <span className="text-emerald-400 font-extrabold uppercase tracking-wide">Kategori: {currentRoom.category_name}</span>
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 rounded-full font-mono font-black text-sm shadow-md">
+                <Clock className="w-4 h-4 stroke-[3]" />
                 <span>{timer}s</span>
               </div>
             </div>
 
             {currentQ && (
-              <div className="glass-card p-8 rounded-3xl border border-slate-700 text-left space-y-6 shadow-2xl">
+              <div className="glass-card p-8 rounded-3xl border-2 border-slate-700 text-left space-y-6 shadow-2xl bg-slate-900/90 backdrop-blur-md">
                 <h2 className="text-xl md:text-3xl font-extrabold text-white leading-relaxed">
                   {currentQ.question_text}
                 </h2>
@@ -268,15 +285,17 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {(['A', 'B', 'C', 'D'] as const).map((optKey) => {
                     const optText = currentQ[`option_${optKey.toLowerCase()}` as keyof Question];
+                    const shapeInfo = KAHOOT_SHAPES[optKey];
+
                     return (
                       <div
                         key={optKey}
-                        className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center gap-3 text-base font-bold text-slate-200"
+                        className={`p-4 min-h-[60px] flex-shrink-0 rounded-2xl bg-gradient-to-r ${shapeInfo.bg} border-2 flex items-center gap-3.5 text-base font-bold text-white shadow-xl`}
                       >
-                        <span className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black flex-shrink-0 text-lg">
-                          {optKey}
+                        <span className="w-10 h-10 rounded-xl bg-black/25 border border-white/40 flex items-center justify-center font-black text-white flex-shrink-0 text-xl shadow-inner">
+                          {shapeInfo.shape}
                         </span>
-                        <span>{optText}</span>
+                        <span className="font-extrabold text-sm md:text-base">{optText}</span>
                       </div>
                     );
                   })}
@@ -285,13 +304,15 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
             )}
 
             {/* OPERATOR CONTROL BAR */}
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-slate-400 font-bold">{players.length} Pemain Menjawab secara Live</span>
+            <div className="flex items-center justify-between pt-2 flex-shrink-0">
+              <span className="text-xs text-slate-300 font-extrabold bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
+                👥 {players.length} Pemain Menjawab secara Live
+              </span>
               <button
                 onClick={handleShowFeedback}
-                className="emerald-gradient-btn px-6 py-3 rounded-xl text-white font-extrabold text-sm shadow-xl flex items-center gap-2 cursor-pointer active:scale-95"
+                className="emerald-gradient-btn min-h-[48px] px-6 py-3 flex-shrink-0 rounded-xl text-white font-extrabold text-sm shadow-xl flex items-center gap-2 cursor-pointer active:scale-95"
               >
-                <BookOpen className="w-4 h-4" />
+                <BookOpen className="w-4 h-4 flex-shrink-0" />
                 <span>PENJELASAN & DALIL</span>
               </button>
             </div>

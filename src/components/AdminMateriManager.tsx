@@ -98,6 +98,10 @@ export const AdminMateriManager: React.FC = () => {
     fun_fact_description: '',
   });
 
+  // Modal Interactive Toggles (Opsional Dalil & Fun Fact)
+  const [useDalil, setUseDalil] = useState<boolean>(false);
+  const [useFunFact, setUseFunFact] = useState<boolean>(false);
+
   // Book Preview Modal State
   const [isPreviewBookOpen, setIsPreviewBookOpen] = useState<boolean>(false);
   const [previewChapter, setPreviewChapter] = useState<MateriChapter | null>(null);
@@ -142,13 +146,13 @@ export const AdminMateriManager: React.FC = () => {
       right_title: pageForm.right_title || '',
       right_story_text: pageForm.right_story_text || '',
       bullet_points: pageForm.bullet_points || [],
-      dalil_title: pageForm.dalil_title || '',
-      dalil_arabic: pageForm.dalil_arabic || '',
-      dalil_latin: pageForm.dalil_latin || '',
-      dalil_translation: pageForm.dalil_translation || '',
-      dalil_source: pageForm.dalil_source || '',
-      fun_fact_title: pageForm.fun_fact_title || '',
-      fun_fact_description: pageForm.fun_fact_description || '',
+      dalil_title: useDalil ? (pageForm.dalil_title || '') : '',
+      dalil_arabic: useDalil ? (pageForm.dalil_arabic || '') : '',
+      dalil_latin: useDalil ? (pageForm.dalil_latin || '') : '',
+      dalil_translation: useDalil ? (pageForm.dalil_translation || '') : '',
+      dalil_source: useDalil ? (pageForm.dalil_source || '') : '',
+      fun_fact_title: useFunFact ? (pageForm.fun_fact_title || '') : '',
+      fun_fact_description: useFunFact ? (pageForm.fun_fact_description || '') : '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -369,6 +373,8 @@ export const AdminMateriManager: React.FC = () => {
       fun_fact_title: '',
       fun_fact_description: '',
     });
+    setUseDalil(false);
+    setUseFunFact(false);
     setIsPageModalOpen(true);
   };
 
@@ -379,6 +385,10 @@ export const AdminMateriManager: React.FC = () => {
       ...page,
       bullet_points: page.bullet_points && page.bullet_points.length > 0 ? page.bullet_points : [''],
     });
+    const hasD = !!(page.dalil_title || page.dalil_arabic || page.dalil_translation || page.dalil_source || page.dalil_latin);
+    const hasF = !!(page.fun_fact_title || page.fun_fact_description);
+    setUseDalil(hasD);
+    setUseFunFact(hasF);
     setIsPageModalOpen(true);
   };
 
@@ -393,6 +403,13 @@ export const AdminMateriManager: React.FC = () => {
         ...pageForm,
         chapter_id: activeChapter.id,
         bullet_points: cleanBullets,
+        dalil_title: useDalil ? (pageForm.dalil_title || '') : '',
+        dalil_arabic: useDalil ? (pageForm.dalil_arabic || '') : '',
+        dalil_latin: useDalil ? (pageForm.dalil_latin || '') : '',
+        dalil_translation: useDalil ? (pageForm.dalil_translation || '') : '',
+        dalil_source: useDalil ? (pageForm.dalil_source || '') : '',
+        fun_fact_title: useFunFact ? (pageForm.fun_fact_title || '') : '',
+        fun_fact_description: useFunFact ? (pageForm.fun_fact_description || '') : '',
       };
 
       if (editingPageId) {
@@ -903,13 +920,13 @@ export const AdminMateriManager: React.FC = () => {
                           </span>
                         )}
 
-                        {p.dalil_title && (
+                        {(p.dalil_title || p.dalil_arabic || p.dalil_translation) && (
                           <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
                             📖 Dalil
                           </span>
                         )}
 
-                        {p.fun_fact_title && (
+                        {(p.fun_fact_title || p.fun_fact_description) && (
                           <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
                             💡 Fun Fact
                           </span>
@@ -1177,10 +1194,19 @@ export const AdminMateriManager: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPageFormTab('INTERACTIVE')}
-                className={`flex-1 py-2 rounded-xl text-xs font-black transition ${pageFormTab === 'INTERACTIVE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`flex-1 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${pageFormTab === 'INTERACTIVE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
-                ✨ Modal Interaktif
+                <span>✨ Modal Interaktif</span>
+                {(useDalil || useFunFact) ? (
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200">
+                    {[useDalil, useFunFact].filter(Boolean).length} Aktif
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold">
+                    Opsional
+                  </span>
+                )}
               </button>
               <button
                 type="button"
@@ -1493,113 +1519,247 @@ export const AdminMateriManager: React.FC = () => {
                 </div>
               ) : (
                 /* INTERACTIVE TAB (DALIL & FUN FACT) */
-                <div className="space-y-4">
-                  {/* Dalil Sub-Form */}
-                  <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 space-y-3">
-                    <h4 className="text-xs font-black text-emerald-900 uppercase tracking-wide flex items-center gap-1.5">
-                      📖 Modal Dalil (Al-Qur'an / Hadits)
-                    </h4>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Judul Dalil
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Hadits Rukun Islam (HR. Bukhari & Muslim)"
-                        value={pageForm.dalil_title || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, dalil_title: e.target.value })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Teks Arab Dalil
-                      </label>
-                      <textarea
-                        rows={2}
-                        dir="rtl"
-                        placeholder="بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ..."
-                        value={pageForm.dalil_arabic || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, dalil_arabic: e.target.value })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                          Teks Transliterasi Latin
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Buniyal-islaamu 'alaa khamsin..."
-                          value={pageForm.dalil_latin || ''}
-                          onChange={(e) => setPageForm({ ...pageForm, dalil_latin: e.target.value })}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
-                        />
+                <div className="space-y-5">
+                  {/* Info Header Banner */}
+                  <div className="p-3 bg-gradient-to-r from-emerald-50 to-amber-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 bg-white rounded-xl shadow-xs text-base">✨</span>
+                      <div>
+                        <div className="font-black text-slate-800">Fitur Modal Tambahan (Opsional)</div>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          Bisa ditambahkan jika ingin menampilkan tombol "Lihat Dalil" atau "Tahukah Kamu?" pada buku.
+                        </p>
                       </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                          Sumber Dalil
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Hadits Shahih Bukhari No. 8"
-                          value={pageForm.dalil_source || ''}
-                          onChange={(e) => setPageForm({ ...pageForm, dalil_source: e.target.value })}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Arti / Terjemahan Bahasa Indonesia
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder="Islam dibangun di atas lima perkara..."
-                        value={pageForm.dalil_translation || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, dalil_translation: e.target.value })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
-                      />
                     </div>
                   </div>
 
-                  {/* Fun Fact Sub-Form */}
-                  <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 space-y-3">
-                    <h4 className="text-xs font-black text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
-                      💡 Modal Fun Fact (Tahukah Kamu?)
-                    </h4>
+                  {/* 1. SEKSI MODAL DALIL (Al-Qur'an / Hadits) */}
+                  <div className={`p-4 rounded-2xl border transition ${useDalil ? 'bg-emerald-50/70 border-emerald-300 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm font-bold">
+                          📖
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                            1. Modal Dalil (Al-Qur'an / Hadits)
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-semibold">
+                            {useDalil ? 'Fitur Dalil Aktif (Tombol "Lihat Dalil" akan muncul)' : 'Opsional — Saat ini Tidak Digunakan'}
+                          </p>
+                        </div>
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Judul Fun Fact
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Tahukah Kamu?"
-                        value={pageForm.fun_fact_title || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, fun_fact_title: e.target.value })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (useDalil) {
+                            setUseDalil(false);
+                            setPageForm((prev) => ({
+                              ...prev,
+                              dalil_title: '',
+                              dalil_arabic: '',
+                              dalil_latin: '',
+                              dalil_translation: '',
+                              dalil_source: '',
+                            }));
+                          } else {
+                            setUseDalil(true);
+                            setPageForm((prev) => ({
+                              ...prev,
+                              dalil_title: prev.dalil_title || 'Dalil Al-Qur\'an / Hadits',
+                            }));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          useDalil
+                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        }`}
+                      >
+                        {useDalil ? (
+                          <>
+                            <X className="w-3.5 h-3.5 text-rose-700" />
+                            <span>Hapus / Nonaktifkan Dalil</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ Tambahkan Dalil</span>
+                          </>
+                        )}
+                      </button>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Deskripsi Fakta Unik
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder="Sama seperti bangunan rumah, jika salah satu tiang pondasinya roboh..."
-                        value={pageForm.fun_fact_description || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, fun_fact_description: e.target.value })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
-                      />
+                    {useDalil ? (
+                      <div className="space-y-3 pt-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Judul Dalil *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: Hadits Rukun Islam (HR. Bukhari & Muslim)"
+                            value={pageForm.dalil_title || ''}
+                            onChange={(e) => setPageForm({ ...pageForm, dalil_title: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Teks Arab Dalil (Opsional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            dir="rtl"
+                            placeholder="بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ..."
+                            value={pageForm.dalil_arabic || ''}
+                            onChange={(e) => setPageForm({ ...pageForm, dalil_arabic: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                              Teks Transliterasi Latin
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Buniyal-islaamu 'alaa khamsin..."
+                              value={pageForm.dalil_latin || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, dalil_latin: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                              Sumber Dalil (Kitab / Perawi)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Hadits Shahih Bukhari No. 8"
+                              value={pageForm.dalil_source || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, dalil_source: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Arti / Terjemahan Bahasa Indonesia
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Islam dibangun di atas lima perkara..."
+                            value={pageForm.dalil_translation || ''}
+                            onChange={(e) => setPageForm({ ...pageForm, dalil_translation: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center space-y-1">
+                        <p className="text-xs font-semibold text-slate-500">
+                          Halaman ini tidak memakai modal Dalil. Tombol "Lihat Dalil" tidak akan muncul.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. SEKSI MODAL FUN FACT (Tahukah Kamu?) */}
+                  <div className={`p-4 rounded-2xl border transition ${useFunFact ? 'bg-amber-50/70 border-amber-300 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+                      <div className="flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-bold">
+                          💡
+                        </span>
+                        <div>
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                            2. Modal Fun Fact (Tahukah Kamu?)
+                          </h4>
+                          <p className="text-[10px] text-slate-500 font-semibold">
+                            {useFunFact ? 'Fitur Fun Fact Aktif (Tombol "Tahukah Kamu?" akan muncul)' : 'Opsional — Saat ini Tidak Digunakan'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (useFunFact) {
+                            setUseFunFact(false);
+                            setPageForm((prev) => ({
+                              ...prev,
+                              fun_fact_title: '',
+                              fun_fact_description: '',
+                            }));
+                          } else {
+                            setUseFunFact(true);
+                            setPageForm((prev) => ({
+                              ...prev,
+                              fun_fact_title: prev.fun_fact_title || 'Tahukah Kamu?',
+                            }));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          useFunFact
+                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                            : 'bg-amber-500 hover:bg-amber-600 text-amber-950'
+                        }`}
+                      >
+                        {useFunFact ? (
+                          <>
+                            <X className="w-3.5 h-3.5 text-rose-700" />
+                            <span>Hapus / Nonaktifkan Fun Fact</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ Tambahkan Fun Fact</span>
+                          </>
+                        )}
+                      </button>
                     </div>
+
+                    {useFunFact ? (
+                      <div className="space-y-3 pt-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Judul Fun Fact *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: Tahukah Kamu?"
+                            value={pageForm.fun_fact_title || ''}
+                            onChange={(e) => setPageForm({ ...pageForm, fun_fact_title: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Deskripsi Fakta Unik *
+                          </label>
+                          <textarea
+                            rows={3}
+                            placeholder="Sama seperti bangunan rumah, jika salah satu tiang pondasinya roboh..."
+                            value={pageForm.fun_fact_description || ''}
+                            onChange={(e) => setPageForm({ ...pageForm, fun_fact_description: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center space-y-1">
+                        <p className="text-xs font-semibold text-slate-500">
+                          Halaman ini tidak memakai modal Fun Fact. Tombol "Tahukah Kamu?" tidak akan muncul.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -167,20 +167,27 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
     await RoomService.submitRoomScore(room.id, userProfile.id, scoreAdd, isCorrect);
   };
 
-  const currentBg = userProfile.bg_profile || '/image/bgprofile/1.jpg';
+  const currentBg = '/image/kahoot_arena_bg.jpg';
   const playerBorder = userProfile.border_frame || userProfile.border_color || '/image/border/1.png';
+
+  const KAHOOT_SHAPES = {
+    A: { shape: '▲', label: 'Segitiga', gradient: 'from-rose-500 to-red-600 border-red-300 shadow-[0_6px_0_#9f1239] active:translate-y-1 active:shadow-[0_2px_0_#9f1239]' },
+    B: { shape: '◆', label: 'Ketupat', gradient: 'from-sky-500 to-blue-600 border-blue-300 shadow-[0_6px_0_#1e40af] active:translate-y-1 active:shadow-[0_2px_0_#1e40af]' },
+    C: { shape: '●', label: 'Lingkaran', gradient: 'from-amber-400 to-yellow-500 border-yellow-200 shadow-[0_6px_0_#b45309] active:translate-y-1 active:shadow-[0_2px_0_#b45309]' },
+    D: { shape: '■', label: 'Persegi', gradient: 'from-emerald-500 to-teal-600 border-emerald-300 shadow-[0_6px_0_#065f46] active:translate-y-1 active:shadow-[0_2px_0_#065f46]' },
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col font-sans select-none overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col font-sans select-none overflow-hidden bg-slate-950"
       style={{
-        backgroundImage: `url('${currentBg}')`,
+        backgroundImage: `url('${currentBg}'), url('${userProfile.bg_profile || '/image/bgprofile/1.jpg'}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
     >
       {/* Dark Blur Overlay */}
-      <div className="absolute inset-0 bg-[#0F172A]/85 backdrop-blur-md pointer-events-none" />
+      <div className="absolute inset-0 bg-[#0F172A]/75 backdrop-blur-xs pointer-events-none" />
 
       {/* TOP HEADER BAR */}
       <div className="relative z-10 p-3 md:p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shadow-lg">
@@ -231,25 +238,25 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
         {/* FASE 0: WAITING LOBBY (BEFORE GAME STARTS) */}
         {room.status === 'waiting' && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full space-y-6 text-center my-auto">
-            <div className="w-20 h-20 rounded-3xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center mx-auto shadow-2xl animate-pulse">
-              <Users className="w-10 h-10 text-amber-300" />
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-amber-600 border-4 border-amber-200 flex items-center justify-center mx-auto shadow-2xl animate-bounce">
+              <Users className="w-10 h-10 text-slate-950 stroke-[2.5]" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black gold-gradient-text">Terhubung ke Lobby Kuis!</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Anda sudah berada di room PIN <strong className="text-amber-400 font-mono font-bold">{room.room_code}</strong>.
-                Menunggu Host/Admin memulai kuis...
+              <h2 className="text-2xl md:text-3xl font-black gold-gradient-text">Terhubung ke Room Kuis! 🎉</h2>
+              <p className="text-xs md:text-sm text-slate-200 leading-relaxed font-semibold">
+                Kode Room: <strong className="text-amber-300 font-mono text-base font-black px-2 py-0.5 rounded bg-slate-800/80 border border-amber-400/40">{room.room_code}</strong>
+                <br />Menunggu Host/Admin memulai kuis...
               </p>
             </div>
 
-            <div className="p-4 bg-slate-900/90 border border-slate-700 rounded-2xl text-xs space-y-2 text-left shadow-xl">
-              <div className="flex items-center justify-between text-slate-400 font-bold border-b border-slate-800 pb-2">
+            <div className="p-4 bg-slate-900/90 border-2 border-amber-400/40 rounded-3xl text-xs space-y-2 text-left shadow-2xl backdrop-blur-md">
+              <div className="flex items-center justify-between text-slate-300 font-bold border-b border-slate-800 pb-2">
                 <span>Nama Pemain:</span>
-                <span className="text-emerald-400 font-extrabold">{userProfile.name}</span>
+                <span className="text-emerald-400 font-extrabold text-sm">{userProfile.name}</span>
               </div>
-              <div className="flex items-center justify-between text-slate-400 font-bold">
-                <span>Pemain Terhubung:</span>
-                <span className="text-amber-300 font-extrabold">{players.length} Orang</span>
+              <div className="flex items-center justify-between text-slate-300 font-bold">
+                <span>Peserta Terhubung:</span>
+                <span className="text-amber-300 font-extrabold text-sm">{players.length} Orang ⚡</span>
               </div>
             </div>
 
@@ -271,64 +278,63 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
               <span className="text-xs font-bold text-slate-300">
                 Soal <strong className="text-white">{currentQIndex + 1}</strong> dari {questions.length}
               </span>
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 rounded-full border border-amber-500/40 text-amber-300 font-mono font-black text-sm">
-                <Clock className="w-4 h-4 text-amber-400" />
-                <span>{timeLeft}s</span>
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 rounded-full font-mono font-black text-sm shadow-md animate-pulse">
+                <Clock className="w-4 h-4 stroke-[3]" />
+                <span>{timeLeft} DETIK</span>
               </div>
             </div>
 
             {/* QUESTION BOX */}
-            <div className="glass-card p-6 rounded-3xl border border-slate-700 text-left shadow-2xl space-y-3">
-              <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border-2 border-amber-400/40 text-left shadow-2xl space-y-3 bg-slate-900/90 backdrop-blur-md">
+              <span className="text-[10px] uppercase font-black tracking-widest text-emerald-400 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-400/40">
                 {currentQ.category_name || room.category_name}
               </span>
-              <h2 className="text-lg md:text-xl font-extrabold text-white leading-relaxed">
+              <h2 className="text-lg md:text-2xl font-black text-white leading-relaxed tracking-wide">
                 {currentQ.question_text}
               </h2>
             </div>
 
-            {/* 4 COLORFUL ANSWER BUTTONS */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            {/* 4 ICONIC 3D KAHOOT GEOMETRIC ANSWER BUTTONS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
               {(['A', 'B', 'C', 'D'] as const).map((optKey) => {
                 const optText = currentQ[`option_${optKey.toLowerCase()}` as keyof Question];
                 const isSelected = selectedOption === optKey;
                 const isOtherSelected = selectedOption !== null && !isSelected;
-
-                const colorStyles = {
-                  A: 'from-red-600 to-rose-700 border-red-400',
-                  B: 'from-blue-600 to-indigo-700 border-blue-400',
-                  C: 'from-amber-500 to-yellow-600 border-amber-300',
-                  D: 'from-emerald-600 to-teal-700 border-emerald-400',
-                }[optKey];
+                const shapeInfo = KAHOOT_SHAPES[optKey];
 
                 return (
                   <button
                     key={optKey}
                     disabled={selectedOption !== null}
                     onClick={() => handleSelectOption(optKey)}
-                    className={`p-4 rounded-2xl border-2 bg-gradient-to-r text-left transition transform flex items-center gap-3 cursor-pointer shadow-lg ${colorStyles} ${
+                    className={`p-4 min-h-[64px] flex-shrink-0 rounded-2xl border-2 bg-gradient-to-r text-left transition duration-150 flex items-center gap-3 cursor-pointer ${shapeInfo.gradient} ${
                       isSelected
                         ? 'ring-4 ring-white scale-102 font-black opacity-100'
                         : isOtherSelected
-                        ? 'opacity-30 grayscale-[30%] pointer-events-none'
-                        : 'hover:scale-[1.02] active:scale-95'
+                        ? 'opacity-30 grayscale-[40%] pointer-events-none'
+                        : 'hover:brightness-110'
                     }`}
                   >
-                    <span className="w-8 h-8 rounded-xl bg-white/20 border border-white/40 flex items-center justify-center font-black text-white flex-shrink-0 text-base shadow-sm">
-                      {optKey}
+                    {/* Kahoot Shape Icon Container */}
+                    <span className="w-10 h-10 rounded-xl bg-black/25 border border-white/40 flex items-center justify-center font-black text-white flex-shrink-0 text-xl shadow-inner">
+                      {shapeInfo.shape}
                     </span>
-                    <span className="text-white font-extrabold text-sm md:text-base flex-1 drop-shadow-xs">
-                      {optText}
-                    </span>
-                    {isSelected && <CheckCircle2 className="w-6 h-6 text-white stroke-[3]" />}
+
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white font-extrabold text-sm md:text-base block leading-snug drop-shadow-md">
+                        {optText}
+                      </span>
+                    </div>
+
+                    {isSelected && <CheckCircle2 className="w-7 h-7 text-white stroke-[3] flex-shrink-0 drop-shadow-md" />}
                   </button>
                 );
               })}
             </div>
 
             {selectedOption && (
-              <div className="p-3 bg-amber-500/10 border border-amber-400/40 rounded-2xl text-xs font-bold text-amber-300 text-center animate-pulse">
-                Jawaban tersimpan! Menunggu timer 20s habis...
+              <div className="p-4 bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl text-xs md:text-sm font-black text-emerald-300 text-center animate-pulse flex items-center justify-center gap-2 shadow-xl">
+                <span>🔒 Jawaban Terkunci! Menunggu timer habis...</span>
               </div>
             )}
           </motion.div>
