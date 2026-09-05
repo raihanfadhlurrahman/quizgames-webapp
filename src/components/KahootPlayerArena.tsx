@@ -65,6 +65,13 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
     let broadcastChannel: any = null;
 
     const loadQuestions = async () => {
+      if (initialRoom.question_ids && initialRoom.question_ids.length > 0) {
+        const ordered = await GameService.getQuestionsByIds(initialRoom.question_ids);
+        if (ordered.length > 0) {
+          setQuestions(ordered);
+          return;
+        }
+      }
       // Fallback: load deterministically (same sort as operator)
       const qs = await GameService.getQuestions(initialRoom.category_name || 'Campuran', initialRoom.total_questions || 10, 'kahoot', initialRoom.theme_id || 'islamic');
       setQuestions(qs);
@@ -78,6 +85,11 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
       initialRoom.id,
       (updatedRoom) => {
         setRoom(updatedRoom);
+        if (updatedRoom.question_ids && updatedRoom.question_ids.length > 0) {
+          GameService.getQuestionsByIds(updatedRoom.question_ids).then((ordered) => {
+            if (ordered.length > 0) setQuestions(ordered);
+          });
+        }
       },
       (updatedPlayers) => {
         setPlayers(updatedPlayers);
@@ -89,7 +101,7 @@ export const KahootPlayerArena: React.FC<KahootPlayerArenaProps> = ({ initialRoo
       broadcastChannel = supabase.channel(`room_sync_${initialRoom.id}`);
       broadcastChannel
         .on('broadcast', { event: 'provide_questions' }, (payload: any) => {
-          if (payload.payload?.question_ids) {
+          if (payload.payload?.question_ids && payload.payload.question_ids.length > 0) {
             GameService.getQuestionsByIds(payload.payload.question_ids).then((ordered) => {
               if (ordered.length > 0) setQuestions(ordered);
             });

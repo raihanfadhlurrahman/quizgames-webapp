@@ -7,8 +7,19 @@ const LOCAL_STORAGE_LEADERBOARD_KEY = 'islamic_millionaire_leaderboard';
 const LOCAL_STORAGE_CATEGORIES_KEY = 'islamic_millionaire_categories';
 
 export class GameService {
-  // Fetch All Categories (Supabase DB + LocalStorage fallback/merge)
+  // Clear legacy LocalStorage questions & categories if any remain in browser
+  static clearLegacyLocalCache() {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(LOCAL_STORAGE_QUESTIONS_KEY);
+        localStorage.removeItem(LOCAL_STORAGE_CATEGORIES_KEY);
+      } catch {}
+    }
+  }
+
+  // Fetch All Categories (Exclusively from Supabase DB)
   static async getCategories(): Promise<Category[]> {
+    this.clearLegacyLocalCache();
     let list: Category[] = [];
 
     if (isSupabaseConfigured() && supabase) {
@@ -25,35 +36,6 @@ export class GameService {
       }
     }
 
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
-      if (saved) {
-        try {
-          const localList: Category[] = JSON.parse(saved);
-          if (Array.isArray(localList) && localList.length > 0) {
-            if (list.length > 0) {
-              list = list.map((spCat) => {
-                const matched = localList.find(
-                  (lCat) => lCat.id === spCat.id || lCat.name.toLowerCase() === spCat.name.toLowerCase()
-                );
-                return matched ? { ...spCat, ...matched } : spCat;
-              });
-
-              localList.forEach((lCat) => {
-                if (!list.some((spCat) => spCat.id === lCat.id || spCat.name.toLowerCase() === lCat.name.toLowerCase())) {
-                  list.push(lCat);
-                }
-              });
-            } else {
-              list = localList;
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to parse local categories:', e);
-        }
-      }
-    }
-
     if (list.length === 0) {
       list = INITIAL_CATEGORIES;
     }
@@ -61,8 +43,9 @@ export class GameService {
     return list;
   }
 
-  // Save/Update Category (Supabase DB + LocalStorage Sync)
+  // Save/Update Category (Exclusively to Supabase DB)
   static async saveCategory(category: Category, oldCategoryName?: string): Promise<Category> {
+    this.clearLegacyLocalCache();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(category.id || '');
     let savedCat: Category = { ...category };
 
@@ -73,128 +56,75 @@ export class GameService {
       theme_id: category.theme_id || 'islamic',
     };
 
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        if (isUUID) {
+    if (!isSupabaseConfigured() || !supabase) {
+      throw new Error('Supabase Database tidak terkonfigurasi!');
+    }
+
+    try {
+      if (isUUID) {
+        let { data, error } = await supabase
+          .from('categories')
+          .update(payload)
+          .eq('id', category.id)
+          .select()
+          .maybeSingle();
+
+        if (error && error.message?.includes('theme_id')) {
+          delete payload.theme_id;
+          const res = await supabase.from('categories').update(payload).eq('id', category.id).select().maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (error) throw new Error(error.message);
+        if (data) savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
+      } else {
+        const searchName = oldCategoryName ? oldCategoryName.trim() : category.name.trim();
+        const { data: existing } = await supabase.from('categories').select('*').eq('name', searchName).maybeSingle();
+
+        if (existing?.id) {
           let { data, error } = await supabase
             .from('categories')
             .update(payload)
-            .eq('id', category.id)
+            .eq('id', existing.id)
             .select()
             .maybeSingle();
 
-          if (error && error.message?.includes('theme_id')) {
-            delete payload.theme_id;
-            const res = await supabase.from('categories').update(payload).eq('id', category.id).select().maybeSingle();
-            data = res.data;
-            error = res.error;
-          }
-
-          if (!error && data) {
-            savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
-          }
+          if (error) throw new Error(error.message);
+          if (data) savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
         } else {
-          const searchName = oldCategoryName ? oldCategoryName.trim() : category.name.trim();
-          const { data: existing } = await supabase.from('categories').select('*').eq('name', searchName).maybeSingle();
+          let { data, error } = await supabase
+            .from('categories')
+            .upsert([payload], { onConflict: 'name' })
+            .select()
+            .maybeSingle();
 
-          if (existing?.id) {
-            let { data, error } = await supabase
-              .from('categories')
-              .update(payload)
-              .eq('id', existing.id)
-              .select()
-              .maybeSingle();
-
-            if (!error && data) {
-              savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
-            }
-          } else {
-            let { data, error } = await supabase
-              .from('categories')
-              .upsert([payload], { onConflict: 'name' })
-              .select()
-              .maybeSingle();
-
-            if (!error && data) {
-              savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
-            }
-          }
+          if (error) throw new Error(error.message);
+          if (data) savedCat = { ...data, theme_id: data.theme_id || category.theme_id || 'islamic' };
         }
-
-        if (oldCategoryName && oldCategoryName.trim() !== category.name.trim()) {
-          try {
-            await supabase
-              .from('questions')
-              .update({ category_name: category.name.trim() })
-              .eq('category_name', oldCategoryName.trim());
-          } catch (e) {
-            console.warn('Updating question category_name in Supabase failed:', e);
-          }
-        }
-      } catch (e) {
-        console.warn('Supabase save category failed, saving to LocalStorage:', e);
       }
-    }
 
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
-        let list: Category[] = saved ? JSON.parse(saved) : [...INITIAL_CATEGORIES];
-
-        const targetId = category.id;
-        const targetOldName = (oldCategoryName || '').toLowerCase().trim();
-        const targetName = category.name.toLowerCase().trim();
-
-        const idx = list.findIndex(
-          c => c.id === targetId ||
-               (targetOldName && c.name.toLowerCase().trim() === targetOldName) ||
-               (targetName && c.name.toLowerCase().trim() === targetName)
-        );
-
-        if (idx >= 0) {
-          list[idx] = {
-            ...list[idx],
-            ...savedCat,
-            id: list[idx].id,
-          };
-          savedCat = list[idx];
-        } else {
-          const newId = savedCat.id || `cat-custom-${Date.now()}`;
-          savedCat.id = newId;
-          list.push(savedCat);
+      if (oldCategoryName && oldCategoryName.trim() !== category.name.trim()) {
+        try {
+          await supabase
+            .from('questions')
+            .update({ category_name: category.name.trim() })
+            .eq('category_name', oldCategoryName.trim());
+        } catch (e) {
+          console.warn('Updating question category_name in Supabase failed:', e);
         }
-
-        localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
-
-        if (oldCategoryName && oldCategoryName.trim() !== category.name.trim()) {
-          const savedQuestions = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-          if (savedQuestions) {
-            try {
-              let qList: Question[] = JSON.parse(savedQuestions);
-              let qUpdated = false;
-              qList = qList.map(q => {
-                if (q.category_name?.trim().toLowerCase() === oldCategoryName.trim().toLowerCase()) {
-                  qUpdated = true;
-                  return { ...q, category_name: category.name.trim() };
-                }
-                return q;
-              });
-              if (qUpdated) {
-                localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(qList));
-              }
-            } catch {}
-          }
-        }
-      } catch (e) {
-        console.warn('LocalStorage saveCategory error:', e);
       }
+    } catch (e: any) {
+      console.error('Supabase save category failed:', e);
+      throw e;
     }
 
     return savedCat;
   }
 
-  // Delete Category (Supabase DB + LocalStorage Sync)
+  // Delete Category (Exclusively from Supabase DB)
   static async deleteCategory(id: string, name?: string): Promise<void> {
+    this.clearLegacyLocalCache();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isSupabaseConfigured() && supabase) {
@@ -208,21 +138,11 @@ export class GameService {
         console.warn('Supabase delete category failed:', e);
       }
     }
-
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_CATEGORIES_KEY);
-        let list: Category[] = saved ? JSON.parse(saved) : [...INITIAL_CATEGORIES];
-        list = list.filter(c => c.id !== id && (name ? c.name.toLowerCase() !== name.toLowerCase() : true));
-        localStorage.setItem(LOCAL_STORAGE_CATEGORIES_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.warn('LocalStorage deleteCategory error:', e);
-      }
-    }
   }
 
   // Seed initial categories & questions to Supabase
   static async seedInitialQuestionsToSupabase(): Promise<{ count: number; error?: string }> {
+    this.clearLegacyLocalCache();
     if (!isSupabaseConfigured() || !supabase) {
       return { count: 0, error: 'Supabase tidak terkonfigurasi.' };
     }
@@ -292,13 +212,14 @@ export class GameService {
     }
   }
 
-  // Fetch Questions (Filtered by category, gameType, and strictly by themeId: 'islamic' | 'independence' | 'culture')
+  // Fetch Questions Exclusively from Supabase Database
   static async getQuestions(
     categoryName?: string,
     count: number = 15,
     gameType: 'millionaire' | 'kahoot' = 'millionaire',
     themeId?: string
   ): Promise<Question[]> {
+    this.clearLegacyLocalCache();
     let pool: Question[] = [];
     const activeTheme = themeId || (typeof window !== 'undefined' ? localStorage.getItem('app_theme') : 'islamic') || 'islamic';
 
@@ -335,37 +256,6 @@ export class GameService {
       }
     }
 
-    // Check LocalStorage fallback
-    if (pool.length === 0 && typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-      if (saved) {
-        try {
-          const list: Question[] = JSON.parse(saved);
-          let filtered = list.filter(q => (q.theme_id || 'islamic') === activeTheme);
-          if (categoryName && categoryName !== 'Campuran') {
-            const catFiltered = filtered.filter(q => q.category_name === categoryName);
-            if (catFiltered.length > 0) filtered = catFiltered;
-          }
-          if (filtered.length > 0) pool = filtered;
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    // Fallback ONLY if both Supabase & LocalStorage returned 0 rows
-    if (pool.length === 0) {
-      pool = INITIAL_QUESTIONS.filter((q) => (q.theme_id || 'islamic') === activeTheme);
-      if (categoryName && categoryName !== 'Campuran') {
-        const filtered = pool.filter((q) => q.category_name === categoryName);
-        if (filtered.length > 0) pool = filtered;
-      }
-      if (pool.length === 0) {
-        pool = INITIAL_QUESTIONS.filter((q) => (q.theme_id || 'islamic') === activeTheme);
-      }
-      if (pool.length === 0) pool = INITIAL_QUESTIONS;
-    }
-
     // Deterministic sort for kahoot mode so Operator and all Participants get EXACT same question order
     if (gameType === 'kahoot') {
       return [...pool].sort((a, b) => (a.id || '').localeCompare(b.id || '')).slice(0, count);
@@ -375,8 +265,9 @@ export class GameService {
     return shuffled.slice(0, count);
   }
 
-  // Fetch specific questions by IDs, preserving the order of the IDs
+  // Fetch specific questions by IDs Exclusively from Supabase Database
   static async getQuestionsByIds(ids: string[]): Promise<Question[]> {
+    this.clearLegacyLocalCache();
     if (!ids || ids.length === 0) return [];
     
     let pool: Question[] = [];
@@ -405,22 +296,6 @@ export class GameService {
       }
     }
 
-    if (pool.length === 0 && typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-      if (saved) {
-        try {
-          const list: Question[] = JSON.parse(saved);
-          pool = list.filter((q) => ids.includes(q.id || ''));
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    if (pool.length === 0) {
-      pool = INITIAL_QUESTIONS.filter((q) => ids.includes(q.id || ''));
-    }
-
     // Sort the pool according to the order of `ids` array
     const sorted = [...pool].sort((a, b) => {
       const idxA = ids.indexOf(a.id || '');
@@ -431,8 +306,9 @@ export class GameService {
     return sorted;
   }
 
-  // Fetch ALL questions for Admin view (Supabase DB + LocalStorage fallback/merge)
+  // Fetch ALL questions for Admin view Exclusively from Supabase Database
   static async getAllQuestionsAdmin(): Promise<Question[]> {
+    this.clearLegacyLocalCache();
     let pool: Question[] = [];
 
     if (isSupabaseConfigured() && supabase) {
@@ -457,48 +333,20 @@ export class GameService {
             theme_id: q.theme_id || 'islamic',
             category_name: q.categories?.name || q.category_name || 'Campuran',
           }));
+        } else if (error) {
+          console.error('Error fetching questions from Supabase for Admin:', error.message);
         }
       } catch (e) {
         console.warn('Supabase fetch all questions failed:', e);
       }
     }
 
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-      if (saved) {
-        try {
-          const localList: Question[] = JSON.parse(saved);
-          if (Array.isArray(localList) && localList.length > 0) {
-            if (pool.length > 0) {
-              pool = pool.map((spQ) => {
-                const matched = localList.find((lQ) => lQ.id === spQ.id);
-                return matched ? { ...spQ, ...matched } : spQ;
-              });
-
-              localList.forEach((lQ) => {
-                if (!pool.some((p) => p.id === lQ.id)) {
-                  pool.unshift(lQ);
-                }
-              });
-            } else {
-              pool = localList;
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to parse local questions:', e);
-        }
-      }
-    }
-
-    if (pool.length === 0) {
-      pool = INITIAL_QUESTIONS;
-    }
-
     return pool;
   }
 
-  // Save/Update Single Question (Supabase DB + LocalStorage Sync)
+  // Save/Update Single Question Exclusively to Supabase Database
   static async saveQuestion(question: Question): Promise<Question> {
+    this.clearLegacyLocalCache();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(question.id || '');
     let savedQuestion: Question = { ...question };
 
@@ -534,102 +382,99 @@ export class GameService {
       ustadz_hint: question.ustadz_hint || '',
     };
 
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        if (isUUID) {
-          let { data, error } = await supabase
-            .from('questions')
-            .update(payload)
-            .eq('id', question.id)
-            .select('*, categories(name)')
-            .maybeSingle();
-
-          if (error) {
-            delete payload.category_id;
-            const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
-            data = res.data;
-            error = res.error;
-          }
-
-          if (error && error.message?.includes('theme_id')) {
-            delete payload.theme_id;
-            const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
-            data = res.data;
-            error = res.error;
-          }
-
-          if (!error && data) {
-            savedQuestion = {
-              ...data,
-              category_name: data.categories?.name || data.category_name || question.category_name || 'Campuran',
-            };
-          }
-        } else {
-          let { data, error } = await supabase
-            .from('questions')
-            .insert([payload])
-            .select('*, categories(name)')
-            .maybeSingle();
-
-          if (error) {
-            delete payload.category_id;
-            const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
-            data = res.data;
-            error = res.error;
-          }
-
-          if (error && error.message?.includes('theme_id')) {
-            delete payload.theme_id;
-            const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
-            data = res.data;
-            error = res.error;
-          }
-
-          if (!error && data) {
-            savedQuestion = {
-              ...data,
-              category_name: data.categories?.name || data.category_name || question.category_name || 'Campuran',
-            };
-          }
-        }
-      } catch (e: any) {
-        console.warn('Supabase saveQuestion failed, falling back to local storage:', e);
-      }
+    if (!isSupabaseConfigured() || !supabase) {
+      (savedQuestion as any)._dbError = 'Supabase Database tidak terkonfigurasi!';
+      return savedQuestion;
     }
 
-    // Always sync to LocalStorage so edits persist locally
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-        let list: Question[] = saved ? JSON.parse(saved) : [...INITIAL_QUESTIONS];
+    try {
+      if (isUUID) {
+        let { data, error } = await supabase
+          .from('questions')
+          .update(payload)
+          .eq('id', question.id)
+          .select('*, categories(name)')
+          .maybeSingle();
 
-        const targetId = question.id;
-        const idx = list.findIndex(q => q.id === targetId || (targetId && q.id === targetId));
-
-        if (idx >= 0) {
-          list[idx] = {
-            ...list[idx],
-            ...savedQuestion,
-            id: list[idx].id, // maintain existing ID
-          };
-          savedQuestion = list[idx];
-        } else {
-          const newId = savedQuestion.id || `q-custom-${Date.now()}`;
-          savedQuestion.id = newId;
-          list.unshift(savedQuestion);
+        if (error) {
+          delete payload.category_id;
+          const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
+          data = res.data;
+          error = res.error;
         }
 
-        localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.warn('LocalStorage saveQuestion error:', e);
+        if (error && error.message?.includes('category_name')) {
+          delete payload.category_name;
+          const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (error && error.message?.includes('theme_id')) {
+          delete payload.theme_id;
+          const res = await supabase.from('questions').update(payload).eq('id', question.id).select('*').maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (!error && data) {
+          savedQuestion = {
+            ...data,
+            category_name: data.categories?.name || data.category_name || question.category_name || 'Campuran',
+          };
+        } else if (error) {
+          console.error('Supabase update question error:', error);
+          (savedQuestion as any)._dbError = error.message;
+        }
+      } else {
+        let { data, error } = await supabase
+          .from('questions')
+          .insert([payload])
+          .select('*, categories(name)')
+          .maybeSingle();
+
+        if (error) {
+          delete payload.category_id;
+          const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (error && error.message?.includes('category_name')) {
+          delete payload.category_name;
+          const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (error && error.message?.includes('theme_id')) {
+          delete payload.theme_id;
+          const res = await supabase.from('questions').insert([payload]).select('*').maybeSingle();
+          data = res.data;
+          error = res.error;
+        }
+
+        if (!error && data) {
+          savedQuestion = {
+            ...data,
+            category_name: data.categories?.name || data.category_name || question.category_name || 'Campuran',
+          };
+        } else if (error) {
+          console.error('Supabase insert question error:', error);
+          (savedQuestion as any)._dbError = error.message;
+        }
       }
+    } catch (e: any) {
+      console.error('Supabase saveQuestion failed:', e);
+      (savedQuestion as any)._dbError = e?.message || 'Gagal terhubung ke Database Supabase';
     }
 
     return savedQuestion;
   }
 
-  // Delete Question (Supabase DB + LocalStorage Sync)
+  // Delete Question Exclusively from Supabase DB
   static async deleteQuestion(id: string): Promise<void> {
+    this.clearLegacyLocalCache();
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     if (isSupabaseConfigured() && supabase && isUUID) {
@@ -639,21 +484,11 @@ export class GameService {
         console.warn('Supabase delete question error:', e);
       }
     }
-
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-        let list: Question[] = saved ? JSON.parse(saved) : [...INITIAL_QUESTIONS];
-        list = list.filter(q => q.id !== id);
-        localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.warn('LocalStorage delete question error:', e);
-      }
-    }
   }
 
-  // Delete Questions Batch (Bulk Delete Supabase DB + LocalStorage Sync)
+  // Delete Questions Batch Exclusively from Supabase DB
   static async deleteQuestionsBatch(ids: string[]): Promise<void> {
+    this.clearLegacyLocalCache();
     if (!ids || ids.length === 0) return;
     const uuidIds = ids.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
 
@@ -664,24 +499,27 @@ export class GameService {
         console.warn('Supabase delete batch questions error:', e);
       }
     }
-
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(LOCAL_STORAGE_QUESTIONS_KEY);
-        let list: Question[] = saved ? JSON.parse(saved) : [...INITIAL_QUESTIONS];
-        list = list.filter(q => !ids.includes(q.id));
-        localStorage.setItem(LOCAL_STORAGE_QUESTIONS_KEY, JSON.stringify(list));
-      } catch (e) {
-        console.warn('LocalStorage batch delete question error:', e);
-      }
-    }
   }
 
   // Save Questions List (Batch / CSV import)
-  static async saveQuestionsBatch(questions: Question[]): Promise<void> {
+  static async saveQuestionsBatch(questions: Question[]): Promise<{ count: number; errorCount: number; errors: string[] }> {
+    let count = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
     for (const q of questions) {
-      await this.saveQuestion(q);
+      const saved = await this.saveQuestion(q);
+      if ((saved as any)._dbError) {
+        errorCount++;
+        if (!errors.includes((saved as any)._dbError)) {
+          errors.push((saved as any)._dbError);
+        }
+      } else {
+        count++;
+      }
     }
+
+    return { count, errorCount, errors };
   }
 
   // Submit Game Result & Leaderboard Entry

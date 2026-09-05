@@ -243,6 +243,7 @@ CREATE TABLE IF NOT EXISTS public.quiz_rooms (
     status VARCHAR(20) DEFAULT 'waiting' CHECK (status IN ('waiting', 'question', 'feedback', 'standing', 'finished', 'in_progress')),
     current_question_index INT DEFAULT 0,
     total_questions INT DEFAULT 10,
+    question_ids JSONB DEFAULT '[]'::jsonb,
     created_by UUID REFERENCES public.players(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     started_at TIMESTAMPTZ,
@@ -291,10 +292,18 @@ ALTER TABLE public.players ADD COLUMN IF NOT EXISTS wawasan_points INT DEFAULT 0
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS budaya_points INT DEFAULT 0;
 
 ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS category_name VARCHAR(100) DEFAULT 'Campuran';
 ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS game_type VARCHAR(20) DEFAULT 'millionaire';
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS dalil TEXT;
+ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS ustadz_hint TEXT;
+
 ALTER TABLE public.game_sessions ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
 ALTER TABLE public.leaderboard ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+
 ALTER TABLE public.quiz_rooms ADD COLUMN IF NOT EXISTS theme_id VARCHAR(50) DEFAULT 'islamic';
+ALTER TABLE public.quiz_rooms ADD COLUMN IF NOT EXISTS question_ids JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.quiz_room_players ADD COLUMN IF NOT EXISTS bg_profile VARCHAR(255);
 
 ALTER TABLE public.quiz_rooms DROP CONSTRAINT IF EXISTS quiz_rooms_status_check;

@@ -20,6 +20,7 @@ export function parseUniversalCSVText(rawText: string): ParsedQuestionResult[] {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const lowerLine = line.toLowerCase();
     if (
       line.startsWith('#') ||
       line.startsWith('?') ||
@@ -30,7 +31,12 @@ export function parseUniversalCSVText(rawText: string): ParsedQuestionResult[] {
     ) {
       continue; // Skip guide/comment lines
     }
-    if (line.toLowerCase().includes('question_text') && line.toLowerCase().includes('option_a')) {
+    if (
+      (lowerLine.includes('question_text') && lowerLine.includes('option_a')) ||
+      (lowerLine.includes('pertanyaan') && (lowerLine.includes('opsi') || lowerLine.includes('pilihan'))) ||
+      (lowerLine.includes('soal') && lowerLine.includes('opsi')) ||
+      (lowerLine.includes('theme_id') && lowerLine.includes('category_name'))
+    ) {
       continue; // Skip header line
     }
 

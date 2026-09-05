@@ -25,26 +25,35 @@ export class RoomService {
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { data, error } = await supabase
+        const insertPayload: any = {
+          room_code: pin,
+          title: title.trim() || 'Kuis Live Sosialisasi KKN',
+          category_name: categoryName,
+          theme_id: themeId || 'islamic',
+          total_questions: actualTotalQuestions,
+          status: 'waiting',
+          current_question_index: 0,
+          created_by: createdBy || null,
+        };
+        if (questionIds && questionIds.length > 0) {
+          insertPayload.question_ids = questionIds;
+        }
+
+        let { data, error } = await supabase
           .from('quiz_rooms')
-          .insert([
-            {
-              room_code: pin,
-              title: title.trim() || 'Kuis Live Sosialisasi KKN',
-              category_name: categoryName,
-              theme_id: themeId || 'islamic',
-              total_questions: actualTotalQuestions,
-              status: 'waiting',
-              current_question_index: 0,
-              created_by: createdBy || null,
-            },
-          ])
+          .insert([insertPayload])
           .select()
           .single();
 
+        if (error && error.message?.includes('question_ids')) {
+          delete insertPayload.question_ids;
+          const res = await supabase.from('quiz_rooms').insert([insertPayload]).select().single();
+          data = res.data;
+          error = res.error;
+        }
+
         if (!error && data) {
           const roomData = data as QuizRoom;
-          // We attach question_ids manually to the returned object so Host can cache it
           if (questionIds) roomData.question_ids = questionIds;
           return roomData;
         } else {
@@ -292,6 +301,10 @@ export class RoomService {
           status,
           current_question_index: questionIndex,
         };
+        if (questionIds && questionIds.length > 0) {
+          updates.question_ids = questionIds;
+          updates.total_questions = questionIds.length;
+        }
         if (status === 'question' && questionIndex === 0) {
           updates.started_at = new Date().toISOString();
         }
@@ -299,10 +312,16 @@ export class RoomService {
           updates.finished_at = new Date().toISOString();
         }
 
-        const { error } = await supabase
+        let { error } = await supabase
           .from('quiz_rooms')
           .update(updates)
           .eq('id', roomId);
+
+        if (error && error.message?.includes('question_ids')) {
+          delete updates.question_ids;
+          const res = await supabase.from('quiz_rooms').update(updates).eq('id', roomId);
+          error = res.error;
+        }
 
         if (error && error.code === '23514') {
           console.warn('Supabase status check constraint fallback triggered:', error.message);

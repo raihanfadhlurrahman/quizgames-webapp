@@ -145,6 +145,7 @@ export default function AdminPage() {
 
   const loadQuestions = async () => {
     setLoading(true);
+    GameService.clearLegacyLocalCache();
     const data = await GameService.getAllQuestionsAdmin();
     setQuestions(data);
     await loadCategories();
@@ -523,12 +524,18 @@ export default function AdminPage() {
       return;
     }
 
-    await GameService.saveQuestionsBatch(validQuestions);
+    const res = await GameService.saveQuestionsBatch(validQuestions);
     await loadQuestions();
     setIsImportModalOpen(false);
     setParsedPreviewResults([]);
     setPasteText('');
-    setMessage(`Berhasil mengimpor ${validQuestions.length} soal ke database bertema ${importTargetTheme}!`);
+
+    if (res.errorCount > 0) {
+      alert(`⚠️ Peringatan: ${res.count} soal berhasil disimpan ke lokal, tetapi ${res.errorCount} soal mengalami error saat insert ke Supabase DB:\n\n${res.errors.join('\n')}\n\nHarap pastikan skrip dokumen/schema.sql telah dijalankan di Supabase SQL Editor.`);
+      setMessage(`Impor selesai (${res.count} tersimpan di DB, ${res.errorCount} gagal di DB Supabase).`);
+    } else {
+      setMessage(`Berhasil mengimpor ${res.count} soal ke database bertema ${importTargetTheme}!`);
+    }
   };
 
   const handleResetLeaderboard = async () => {

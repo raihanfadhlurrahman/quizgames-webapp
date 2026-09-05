@@ -23,13 +23,19 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
   const [loading, setLoading] = useState<boolean>(false);
   const [timer, setTimer] = useState<number>(20);
 
+  const broadcastChannelRef = React.useRef<any>(null);
+
   useEffect(() => {
     // Fetch initial questions and players
     RoomService.getRoomPlayers(room.id).then(setPlayers);
     if (room.question_ids && room.question_ids.length > 0) {
       GameService.getQuestionsByIds(room.question_ids).then(setQuestions);
     } else {
-      GameService.getQuestions(room.category_name || 'Campuran', room.total_questions || 10, 'kahoot', room.theme_id || 'islamic').then(setQuestions);
+      GameService.getQuestions(room.category_name || 'Campuran', room.total_questions || 10, 'kahoot', room.theme_id || 'islamic').then((qs) => {
+        setQuestions(qs);
+        const qIds = qs.map((q) => q.id);
+        setCurrentRoom((prev) => ({ ...prev, question_ids: qIds }));
+      });
     }
 
     // Subscribe to realtime room updates
@@ -44,17 +50,19 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
       }
     );
 
-    // Host Broadcast Channel for Syncing Manual Questions to Players
-    let broadcastChannel: any = null;
+    // Host Broadcast Channel for Syncing Questions to Players
     if (isSupabaseConfigured() && supabase) {
-      broadcastChannel = supabase.channel(`room_sync_${room.id}`);
-      broadcastChannel
+      const channel = supabase.channel(`room_sync_${room.id}`);
+      broadcastChannelRef.current = channel;
+      channel
         .on('broadcast', { event: 'request_questions' }, () => {
-          if (room.question_ids && room.question_ids.length > 0) {
-            broadcastChannel.send({
+          const currentIds = questions.map((q) => q.id);
+          const idsToSend = currentIds.length > 0 ? currentIds : room.question_ids;
+          if (idsToSend && idsToSend.length > 0) {
+            channel.send({
               type: 'broadcast',
               event: 'provide_questions',
-              payload: { question_ids: room.question_ids },
+              payload: { question_ids: idsToSend },
             });
           }
         })
@@ -63,8 +71,9 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
 
     return () => {
       unsubscribe();
-      if (broadcastChannel && supabase) {
-        supabase.removeChannel(broadcastChannel);
+      if (broadcastChannelRef.current && supabase) {
+        supabase.removeChannel(broadcastChannelRef.current);
+        broadcastChannelRef.current = null;
       }
     };
   }, [room.id]);
@@ -96,6 +105,17 @@ export const RoomHostView: React.FC<RoomHostViewProps> = ({ room, onClose }) => 
     const orderedIds = questions.map((q) => q.id);
     setCurrentRoom((prev) => ({ ...prev, status: 'question', current_question_index: 0, question_ids: orderedIds }));
     await RoomService.updateRoomStatus(room.id, 'question', 0, orderedIds);
+    if (broadcastChannelRef.current && supabase) {
+      try {
+        broadcastChannelRef.current.send({
+          type: 'broadcast',
+          event: 'provide_questions',
+          payload: { question_ids: orderedIds },
+        });
+      } catch (e) {
+        console.warn('Broadcast provide_questions error:', e);
+      }
+    }
     setLoading(false);
   };
 
