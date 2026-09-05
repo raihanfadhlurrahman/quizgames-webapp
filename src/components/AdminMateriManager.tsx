@@ -973,17 +973,18 @@ export const AdminMateriManager: React.FC = () => {
 
       {/* CHAPTER MODAL (CREATE / EDIT BAB) */}
       {isChapterModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 my-8 text-slate-800"
+            className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl text-slate-800 overflow-hidden"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="p-5 pb-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0 bg-white">
               <h3 className="text-lg font-black text-slate-900">
                 {editingChapterId ? 'Edit Bab Materi' : 'Tambah Bab Materi Baru'}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsChapterModalOpen(false)}
                 className="p-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition"
               >
@@ -991,150 +992,152 @@ export const AdminMateriManager: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveChapter} className="space-y-4">
-              {/* Tema & Kategori Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Tema Pembelajaran *
-                  </label>
-                  <select
-                    value={chapterForm.theme_id}
-                    onChange={(e) => setChapterForm({ ...chapterForm, theme_id: e.target.value as any })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="islamic">🕌 Islami</option>
-                    <option value="independence">🇮🇩 Kemerdekaan</option>
-                    <option value="culture">🎭 Kebudayaan</option>
-                  </select>
+            <form onSubmit={handleSaveChapter} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                {/* Tema & Kategori Selection */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                      Tema Pembelajaran *
+                    </label>
+                    <select
+                      value={chapterForm.theme_id}
+                      onChange={(e) => setChapterForm({ ...chapterForm, theme_id: e.target.value as any })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="islamic">🕌 Islami</option>
+                      <option value="independence">🇮🇩 Kemerdekaan</option>
+                      <option value="culture">🎭 Kebudayaan</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                      Kategori Bab *
+                    </label>
+                    <select
+                      value={chapterForm.category_id}
+                      onChange={(e) => {
+                        const catId = e.target.value;
+                        const catObj = categories.find((c) => c.id === catId);
+                        setChapterForm({
+                          ...chapterForm,
+                          category_id: catId,
+                          category_name: catObj ? catObj.name : chapterForm.category_name,
+                        });
+                      }}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.icon || '🏷️'} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
+                {/* Chapter Number & Cover Icon */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1 col-span-1">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                      Nomor Bab *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={chapterForm.chapter_number || 1}
+                      onChange={(e) => setChapterForm({ ...chapterForm, chapter_number: parseInt(e.target.value) || 1 })}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1 col-span-2">
+                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                      Ikon Cover Bab
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={chapterForm.cover_icon || '📖'}
+                        onChange={(e) => setChapterForm({ ...chapterForm, cover_icon: e.target.value })}
+                        className="w-16 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center text-base font-bold"
+                      />
+                      <div className="flex items-center gap-1 overflow-x-auto py-1 custom-scrollbar">
+                        {EMOJI_PRESETS.slice(0, 7).map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setChapterForm({ ...chapterForm, cover_icon: emoji })}
+                            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm flex items-center justify-center flex-shrink-0"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Kategori Bab *
-                  </label>
-                  <select
-                    value={chapterForm.category_id}
-                    onChange={(e) => {
-                      const catId = e.target.value;
-                      const catObj = categories.find((c) => c.id === catId);
-                      setChapterForm({
-                        ...chapterForm,
-                        category_id: catId,
-                        category_name: catObj ? catObj.name : chapterForm.category_name,
-                      });
-                    }}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.icon || '🏷️'} {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Chapter Number & Cover Icon */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1 col-span-1">
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Nomor Bab *
+                    Judul Bab Materi *
                   </label>
                   <input
-                    type="number"
-                    min={1}
+                    type="text"
                     required
-                    value={chapterForm.chapter_number || 1}
-                    onChange={(e) => setChapterForm({ ...chapterForm, chapter_number: parseInt(e.target.value) || 1 })}
+                    placeholder="Contoh: Bab 1 - Mengenal Rukun Islam"
+                    value={chapterForm.title || ''}
+                    onChange={(e) => setChapterForm({ ...chapterForm, title: e.target.value })}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
-                <div className="space-y-1 col-span-2">
+                {/* Description */}
+                <div className="space-y-1">
                   <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Ikon Cover Bab
+                    Deskripsi Singkat Bab
                   </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={chapterForm.cover_icon || '📖'}
-                      onChange={(e) => setChapterForm({ ...chapterForm, cover_icon: e.target.value })}
-                      className="w-16 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-center text-base font-bold"
-                    />
-                    <div className="flex items-center gap-1 overflow-x-auto py-1 custom-scrollbar">
-                      {EMOJI_PRESETS.slice(0, 7).map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => setChapterForm({ ...chapterForm, cover_icon: emoji })}
-                          className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm flex items-center justify-center flex-shrink-0"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
+                  <textarea
+                    rows={3}
+                    placeholder="Penjelasan ringkas isi materi di bab ini..."
+                    value={chapterForm.description || ''}
+                    onChange={(e) => setChapterForm({ ...chapterForm, description: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                {/* Publish Checkbox */}
+                <label className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={chapterForm.is_published || false}
+                    onChange={(e) => setChapterForm({ ...chapterForm, is_published: e.target.checked })}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="text-xs font-black text-slate-900 block">Publikasikan Bab Ini</span>
+                    <span className="text-[10px] font-medium text-slate-500 block">
+                      Jika di centang, bab materi akan langsung dapat diakses oleh pemain di buku digital.
+                    </span>
                   </div>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                  Judul Bab Materi *
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Bab 1 - Mengenal Rukun Islam"
-                  value={chapterForm.title || ''}
-                  onChange={(e) => setChapterForm({ ...chapterForm, title: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                />
               </div>
-
-              {/* Description */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                  Deskripsi Singkat Bab
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Penjelasan ringkas isi materi di bab ini..."
-                  value={chapterForm.description || ''}
-                  onChange={(e) => setChapterForm({ ...chapterForm, description: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              {/* Publish Checkbox */}
-              <label className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={chapterForm.is_published || false}
-                  onChange={(e) => setChapterForm({ ...chapterForm, is_published: e.target.checked })}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <div>
-                  <span className="text-xs font-black text-slate-900 block">Publikasikan Bab Ini</span>
-                  <span className="text-[10px] font-medium text-slate-500 block">
-                    Jika di centang, bab materi akan langsung dapat diakses oleh pemain di buku digital.
-                  </span>
-                </div>
-              </label>
 
               {/* Submit Button */}
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="p-4 px-5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsChapterModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold"
+                  className="px-4 py-2.5 rounded-xl bg-slate-200/80 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-black shadow-md flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-black shadow-md flex items-center gap-1.5 transition"
                 >
                   <Save className="w-4 h-4" />
                   <span>{editingChapterId ? 'SIMPAN PERUBAHAN BAB' : 'SIMPAN BAB BARU'}</span>
@@ -1147,13 +1150,14 @@ export const AdminMateriManager: React.FC = () => {
 
       {/* PAGE MODAL (CREATE / EDIT HALAMAN BUKU) */}
       {isPageModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8 text-slate-800"
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl text-slate-800 overflow-hidden"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            {/* Modal Header (Fixed at top) */}
+            <div className="p-5 pb-3 border-b border-slate-100 flex items-center justify-between flex-shrink-0 bg-white">
               <div>
                 <h3 className="text-lg font-black text-slate-900">
                   {editingPageId ? `Edit Halaman ${pageForm.page_number}` : 'Tambah Halaman Buku Baru'}
@@ -1173,6 +1177,7 @@ export const AdminMateriManager: React.FC = () => {
                   <span>Uji Pratinjau Buku</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setIsPageModalOpen(false)}
                   className="p-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition"
                 >
@@ -1181,601 +1186,609 @@ export const AdminMateriManager: React.FC = () => {
               </div>
             </div>
 
-            {/* Modal Sub-Tabs */}
-            <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setPageFormTab('CONTENT')}
-                className={`flex-1 py-2 rounded-xl text-xs font-black transition ${pageFormTab === 'CONTENT' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            {/* Modal Sub-Tabs (Fixed below header) */}
+            <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+              <div className="flex items-center gap-2 p-1 bg-slate-200/70 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setPageFormTab('CONTENT')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black transition ${
+                    pageFormTab === 'CONTENT' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
-              >
-                📖 Konten Utama
-              </button>
-              <button
-                type="button"
-                onClick={() => setPageFormTab('INTERACTIVE')}
-                className={`flex-1 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${pageFormTab === 'INTERACTIVE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                >
+                  📖 Konten Utama
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPageFormTab('INTERACTIVE')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 ${
+                    pageFormTab === 'INTERACTIVE' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
-              >
-                <span>✨ Modal Interaktif</span>
-                {(useDalil || useFunFact) ? (
-                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200">
-                    {[useDalil, useFunFact].filter(Boolean).length} Aktif
-                  </span>
-                ) : (
-                  <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold">
-                    Opsional
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setPageFormTab('PREVIEW')}
-                className={`flex-1 py-2 rounded-xl text-xs font-black transition ${pageFormTab === 'PREVIEW' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                >
+                  <span>✨ Modal Interaktif</span>
+                  {(useDalil || useFunFact) ? (
+                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200">
+                      {[useDalil, useFunFact].filter(Boolean).length} Aktif
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600 text-[10px] font-bold">
+                      Opsional
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPageFormTab('PREVIEW')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-black transition ${
+                    pageFormTab === 'PREVIEW' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
-              >
-                👁️ Pratinjau Live Buku
-              </button>
+                >
+                  👁️ Pratinjau Live Buku
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSavePage} className="space-y-4">
-              {pageFormTab === 'CONTENT' ? (
-                <div className="space-y-4">
-                  {/* Page Number */}
-                  <div className="w-32">
-                    <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                      Nomor Halaman *
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      required
-                      value={pageForm.page_number || 1}
-                      onChange={(e) => setPageForm({ ...pageForm, page_number: parseInt(e.target.value) || 1 })}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSavePage} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                {pageFormTab === 'CONTENT' ? (
+                  <div className="space-y-4">
+                    {/* Page Number */}
+                    <div className="w-32">
+                      <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                        Nomor Halaman *
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        value={pageForm.page_number || 1}
+                        onChange={(e) => setPageForm({ ...pageForm, page_number: parseInt(e.target.value) || 1 })}
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
 
-                  {/* Section Left Content (Visual Media & Audio) */}
-                  <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-3">
-                    <h4 className="text-xs font-black text-emerald-900 uppercase tracking-wide flex items-center gap-1.5">
-                      <ImageIcon className="w-4 h-4 text-emerald-700" />
-                      <span>1. Konten Sisi Kiri (Media & Audio Voice / TTS)</span>
-                    </h4>
+                    {/* Section Left Content (Visual Media & Audio) */}
+                    <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80 space-y-3">
+                      <h4 className="text-xs font-black text-emerald-900 uppercase tracking-wide flex items-center gap-1.5">
+                        <ImageIcon className="w-4 h-4 text-emerald-700" />
+                        <span>1. Konten Sisi Kiri (Media & Audio Voice / TTS)</span>
+                      </h4>
 
-                    {/* Tipe Media & URL Media */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-1">
-                        <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                          Tipe Media
-                        </label>
-                        <select
-                          value={pageForm.left_media_type || 'image'}
-                          onChange={(e) => setPageForm({ ...pageForm, left_media_type: e.target.value as any })}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                        >
-                          <option value="image">🖼️ Gambar / Stiker</option>
-                          <option value="youtube">🔴 Link Video YouTube</option>
-                          <option value="video">🎬 File Video Direct (.mp4)</option>
-                          <option value="gif">✨ Gambar GIF</option>
-                        </select>
+                      {/* Tipe Media & URL Media */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-1">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Tipe Media
+                          </label>
+                          <select
+                            value={pageForm.left_media_type || 'image'}
+                            onChange={(e) => setPageForm({ ...pageForm, left_media_type: e.target.value as any })}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                          >
+                            <option value="image">🖼️ Gambar / Stiker</option>
+                            <option value="youtube">🔴 Link Video YouTube</option>
+                            <option value="video">🎬 File Video Direct (.mp4)</option>
+                            <option value="gif">✨ Gambar GIF</option>
+                          </select>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                              {pageForm.left_media_type === 'youtube' || isYouTubeUrl(pageForm.left_media_url, pageForm.left_media_type)
+                                ? 'URL Link Video YouTube *'
+                                : 'URL Media Gambar / Video'}
+                            </label>
+
+                            <label className={`cursor-pointer px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition ${isUploadingMedia ? 'bg-slate-400 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                              }`}>
+                              {isUploadingMedia ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                              <span>{isUploadingMedia ? 'Mengunggah...' : '📁 Upload Berkas'}</span>
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                onChange={handleUploadMediaFile}
+                                className="hidden"
+                                disabled={isUploadingMedia}
+                              />
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder={
+                              pageForm.left_media_type === 'youtube'
+                                ? 'https://www.youtube.com/watch?v=... atau https://youtu.be/...'
+                                : '/image/sticker/islami/masjid.png atau https://...'
+                            }
+                            value={pageForm.left_media_url || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const isYt = isYouTubeUrl(val);
+                              setPageForm({
+                                ...pageForm,
+                                left_media_url: val,
+                                left_media_type: isYt ? 'youtube' : pageForm.left_media_type,
+                              });
+                            }}
+                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
                       </div>
 
-                      <div className="sm:col-span-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                            {pageForm.left_media_type === 'youtube' || isYouTubeUrl(pageForm.left_media_url, pageForm.left_media_type)
-                              ? 'URL Link Video YouTube *'
-                              : 'URL Media Gambar / Video'}
-                          </label>
-
-                          <label className={`cursor-pointer px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition ${isUploadingMedia ? 'bg-slate-400 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                            }`}>
-                            {isUploadingMedia ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                            <span>{isUploadingMedia ? 'Mengunggah...' : '📁 Upload Berkas'}</span>
-                            <input
-                              type="file"
-                              accept="image/*,video/*"
-                              onChange={handleUploadMediaFile}
-                              className="hidden"
-                              disabled={isUploadingMedia}
+                      {/* YouTube Auto-Preview Box */}
+                      {isYouTubeUrl(pageForm.left_media_url, pageForm.left_media_type) && (
+                        <div className="p-3 bg-white rounded-xl border border-rose-200 flex items-center gap-3">
+                          <div className="relative w-24 h-14 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200">
+                            <img
+                              src={getYouTubeThumbnailUrl(pageForm.left_media_url) || ''}
+                              alt="Preview Thumbnail YouTube"
+                              className="w-full h-full object-cover"
                             />
+                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                              <Youtube className="w-6 h-6 text-rose-600 drop-shadow" />
+                            </div>
+                          </div>
+                          <div className="overflow-hidden flex-1">
+                            <span className="text-[10px] font-black text-rose-700 uppercase tracking-wider flex items-center gap-1">
+                              <Youtube className="w-3.5 h-3.5 text-rose-600" /> Pratinjau Link YouTube
+                            </span>
+                            <p className="text-xs font-bold text-slate-800 truncate">
+                              Thumbnail otomatis terdeteksi dari link.
+                            </p>
+                            <a
+                              href={getYouTubeWatchUrl(pageForm.left_media_url)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[10px] text-blue-600 font-extrabold hover:underline flex items-center gap-1 mt-0.5"
+                            >
+                              <span>Tes Buka Video YouTube</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Preset Stiker Buttons (jika tipe gambar) */}
+                      {pageForm.left_media_type !== 'youtube' && (
+                        <div>
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Preset Stiker Cepat
                           </label>
+                          <div className="flex items-center gap-1.5 py-1">
+                            {STICKER_PRESETS.map((st) => (
+                              <button
+                                key={st.url}
+                                type="button"
+                                onClick={() => setPageForm({ ...pageForm, left_media_url: st.url, left_media_type: 'image' })}
+                                className="px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 rounded-lg text-[10px] font-bold text-slate-700"
+                              >
+                                {st.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Audio Section: Custom Audio Voice File & TTS Text */}
+                      <div className="space-y-2 pt-2 border-t border-emerald-200/60">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
+                              <Music className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Pilihan 1: URL Berkas File Audio Voice (MP3 / WAV)</span>
+                            </label>
+                            <label className={`cursor-pointer px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition ${isUploadingAudio ? 'bg-slate-400 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white shadow-xs'
+                              }`}>
+                              {isUploadingAudio ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                              <span>{isUploadingAudio ? 'Mengunggah...' : '🎵 Upload Audio'}</span>
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                onChange={handleUploadAudioFile}
+                                className="hidden"
+                                disabled={isUploadingAudio}
+                              />
+                            </label>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleTestTTS(pageForm.left_audio_text, pageForm.left_audio_url)}
+                            className="text-[10px] font-extrabold text-purple-700 hover:underline flex items-center gap-1"
+                          >
+                            <Volume2 className="w-3.5 h-3.5 text-purple-600" />
+                            <span>{isPlayingTTS ? 'Menghentikan Audio' : 'Uji Pemutar Audio / Voice'}</span>
+                          </button>
                         </div>
                         <input
                           type="text"
-                          placeholder={
-                            pageForm.left_media_type === 'youtube'
-                              ? 'https://www.youtube.com/watch?v=... atau https://youtu.be/...'
-                              : '/image/sticker/islami/masjid.png atau https://...'
-                          }
-                          value={pageForm.left_media_url || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            const isYt = isYouTubeUrl(val);
-                            setPageForm({
-                              ...pageForm,
-                              left_media_url: val,
-                              left_media_type: isYt ? 'youtube' : pageForm.left_media_type,
-                            });
-                          }}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500"
+                          placeholder="Contoh: https://domain.com/suaradanil.mp3 atau upload file di atas"
+                          value={pageForm.left_audio_url || ''}
+                          onChange={(e) => setPageForm({ ...pageForm, left_audio_url: e.target.value })}
+                          className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-purple-500"
+                        />
+                        <p className="text-[10px] text-slate-500 font-semibold">
+                          *Jika diisi URL file `.mp3` atau `.wav`, aplikasi akan memutar rekaman suara asli tersebut saat tombol Dengarkan diklik.
+                        </p>
+                      </div>
+
+                      {/* Audio TTS Text Input */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
+                          <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Pilihan 2: Teks Naskah Suara TTS (Generator Suara Robot)</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          placeholder="Kalimat yang akan dibacakan oleh pembaca suara otomatis jika file audio MP3 tidak diisi..."
+                          value={pageForm.left_audio_text || ''}
+                          onChange={(e) => setPageForm({ ...pageForm, left_audio_text: e.target.value })}
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
 
-                    {/* YouTube Auto-Preview Box */}
-                    {isYouTubeUrl(pageForm.left_media_url, pageForm.left_media_type) && (
-                      <div className="p-3 bg-white rounded-xl border border-rose-200 flex items-center gap-3">
-                        <div className="relative w-24 h-14 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0 border border-slate-200">
-                          <img
-                            src={getYouTubeThumbnailUrl(pageForm.left_media_url) || ''}
-                            alt="Preview Thumbnail YouTube"
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                            <Youtube className="w-6 h-6 text-rose-600 drop-shadow" />
-                          </div>
-                        </div>
-                        <div className="overflow-hidden flex-1">
-                          <span className="text-[10px] font-black text-rose-700 uppercase tracking-wider flex items-center gap-1">
-                            <Youtube className="w-3.5 h-3.5 text-rose-600" /> Pratinjau Link YouTube
-                          </span>
-                          <p className="text-xs font-bold text-slate-800 truncate">
-                            Thumbnail otomatis terdeteksi dari link.
-                          </p>
-                          <a
-                            href={getYouTubeWatchUrl(pageForm.left_media_url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-blue-600 font-extrabold hover:underline flex items-center gap-1 mt-0.5"
-                          >
-                            <span>Tes Buka Video YouTube</span>
-                            <ExternalLink className="w-2.5 h-2.5" />
-                          </a>
-                        </div>
-                      </div>
-                    )}
+                    {/* Section Right Content (Headline & Story) */}
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-slate-700" />
+                        <span>2. Konten Sisi Kanan (Judul & Teks Cerita)</span>
+                      </h4>
 
-                    {/* Preset Stiker Buttons (jika tipe gambar) */}
-                    {pageForm.left_media_type !== 'youtube' && (
-                      <div>
+                      <div className="space-y-1">
                         <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                          Preset Stiker Cepat
+                          Judul Headline Halaman
                         </label>
-                        <div className="flex items-center gap-1.5 py-1">
-                          {STICKER_PRESETS.map((st) => (
-                            <button
-                              key={st.url}
-                              type="button"
-                              onClick={() => setPageForm({ ...pageForm, left_media_url: st.url, left_media_type: 'image' })}
-                              className="px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 rounded-lg text-[10px] font-bold text-slate-700"
-                            >
-                              {st.label}
-                            </button>
-                          ))}
-                        </div>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Apa itu Rukun Islam?"
+                          value={pageForm.right_title || ''}
+                          onChange={(e) => setPageForm({ ...pageForm, right_title: e.target.value })}
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
+                        />
                       </div>
-                    )}
 
-                    {/* Audio Section: Custom Audio Voice File & TTS Text */}
-                    <div className="space-y-2 pt-2 border-t border-emerald-200/60">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
-                            <Music className="w-3.5 h-3.5 text-purple-600" />
-                            <span>Pilihan 1: URL Berkas File Audio Voice (MP3 / WAV)</span>
-                          </label>
-                          <label className={`cursor-pointer px-2 py-0.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition ${isUploadingAudio ? 'bg-slate-400 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white shadow-xs'
-                            }`}>
-                            {isUploadingAudio ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                            <span>{isUploadingAudio ? 'Mengunggah...' : '🎵 Upload Audio'}</span>
-                            <input
-                              type="file"
-                              accept="audio/*"
-                              onChange={handleUploadAudioFile}
-                              className="hidden"
-                              disabled={isUploadingAudio}
-                            />
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleTestTTS(pageForm.left_audio_text, pageForm.left_audio_url)}
-                          className="text-[10px] font-extrabold text-purple-700 hover:underline flex items-center gap-1"
-                        >
-                          <Volume2 className="w-3.5 h-3.5 text-purple-600" />
-                          <span>{isPlayingTTS ? 'Menghentikan Audio' : 'Uji Pemutar Audio / Voice'}</span>
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Contoh: https://domain.com/suaradanil.mp3 atau upload file di atas"
-                        value={pageForm.left_audio_url || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, left_audio_url: e.target.value })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-purple-500"
-                      />
-                      <p className="text-[10px] text-slate-500 font-semibold">
-                        *Jika diisi URL file `.mp3` atau `.wav`, aplikasi akan memutar rekaman suara asli tersebut saat tombol Dengarkan diklik.
-                      </p>
-                    </div>
-
-                    {/* Audio TTS Text Input */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider block flex items-center gap-1">
-                        <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Pilihan 2: Teks Naskah Suara TTS (Generator Suara Robot)</span>
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder="Kalimat yang akan dibacakan oleh pembaca suara otomatis jika file audio MP3 tidak diisi..."
-                        value={pageForm.left_audio_text || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, left_audio_text: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Section Right Content (Headline & Story) */}
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-slate-700" />
-                      <span>2. Konten Sisi Kanan (Judul & Teks Cerita)</span>
-                    </h4>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Judul Headline Halaman
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Apa itu Rukun Islam?"
-                        value={pageForm.right_title || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, right_title: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                        Teks Narasi Cerita Utama
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="Penjelasan narasi materi halaman..."
-                        value={pageForm.right_story_text || ''}
-                        onChange={(e) => setPageForm({ ...pageForm, right_story_text: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    {/* Bullet Points Dynamic Manager */}
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center justify-between">
+                      <div className="space-y-1">
                         <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                          Poin-Poin Penting (Bullet Points)
+                          Teks Narasi Cerita Utama
                         </label>
-                        <button
-                          type="button"
-                          onClick={handleAddBulletPoint}
-                          className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Tambah Poin
-                        </button>
+                        <textarea
+                          rows={3}
+                          placeholder="Penjelasan narasi materi halaman..."
+                          value={pageForm.right_story_text || ''}
+                          onChange={(e) => setPageForm({ ...pageForm, right_story_text: e.target.value })}
+                          className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                        />
                       </div>
 
-                      {(pageForm.bullet_points || []).map((bp, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-400">•</span>
-                          <input
-                            type="text"
-                            placeholder={`Poin materi ${idx + 1}`}
-                            value={bp}
-                            onChange={(e) => handleUpdateBulletPoint(idx, e.target.value)}
-                            className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
-                          />
+                      {/* Bullet Points Dynamic Manager */}
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                            Poin-Poin Penting (Bullet Points)
+                          </label>
                           <button
                             type="button"
-                            onClick={() => handleRemoveBulletPoint(idx)}
-                            className="p-1 text-slate-400 hover:text-rose-600"
+                            onClick={handleAddBulletPoint}
+                            className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-1"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5" /> Tambah Poin
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : pageFormTab === 'PREVIEW' ? (
-                /* LIVE PREVIEW TAB */
-                <div className="space-y-3">
-                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-extrabold text-amber-900">
-                        👁️ Pratinjau Live Halaman Buku (Draft)
-                      </span>
-                      <span className="text-[10px] bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-md">
-                        Sizing & Visual 100% Persis Pemain
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handlePreviewCurrentDraftPage}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Buka Layar Penuh</span>
-                    </button>
-                  </div>
 
-                  <div className="w-full rounded-2xl overflow-hidden border-2 border-amber-300 shadow-lg relative bg-slate-900 h-[480px]">
-                    <EducationBook
-                      chapter={activeChapter || { id: 'preview', title: 'Pratinjau', description: '', cover_icon: '📖', category_id: '', category_name: '', theme_id: 'islamic', chapter_number: 1, is_published: true, total_pages: 1, created_at: '', updated_at: '' }}
-                      initialPages={[createDraftPageFromForm()]}
-                      onBack={() => setPageFormTab('CONTENT')}
-                      isPreviewMode={true}
-                    />
-                  </div>
-                </div>
-              ) : (
-                /* INTERACTIVE TAB (DALIL & FUN FACT) */
-                <div className="space-y-5">
-                  {/* Info Header Banner */}
-                  <div className="p-3 bg-gradient-to-r from-emerald-50 to-amber-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 bg-white rounded-xl shadow-xs text-base">✨</span>
-                      <div>
-                        <div className="font-black text-slate-800">Fitur Modal Tambahan (Opsional)</div>
-                        <p className="text-[11px] text-slate-500 font-medium">
-                          Bisa ditambahkan jika ingin menampilkan tombol "Lihat Dalil" atau "Tahukah Kamu?" pada buku.
-                        </p>
+                        {(pageForm.bullet_points || []).map((bp, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-400">•</span>
+                            <input
+                              type="text"
+                              placeholder={`Poin materi ${idx + 1}`}
+                              value={bp}
+                              onChange={(e) => handleUpdateBulletPoint(idx, e.target.value)}
+                              className="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBulletPoint(idx)}
+                              className="p-1 text-slate-400 hover:text-rose-600"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-
-                  {/* 1. SEKSI MODAL DALIL (Al-Qur'an / Hadits) */}
-                  <div className={`p-4 rounded-2xl border transition ${useDalil ? 'bg-emerald-50/70 border-emerald-300 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
-                    <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+                ) : pageFormTab === 'PREVIEW' ? (
+                  /* LIVE PREVIEW TAB */
+                  <div className="space-y-3">
+                    <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm font-bold">
-                          📖
+                        <span className="text-xs font-extrabold text-amber-900">
+                          👁️ Pratinjau Live Halaman Buku (Draft)
                         </span>
-                        <div>
-                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                            1. Modal Dalil (Al-Qur'an / Hadits)
-                          </h4>
-                          <p className="text-[10px] text-slate-500 font-semibold">
-                            {useDalil ? 'Fitur Dalil Aktif (Tombol "Lihat Dalil" akan muncul)' : 'Opsional — Saat ini Tidak Digunakan'}
-                          </p>
-                        </div>
+                        <span className="text-[10px] bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-md">
+                          Sizing & Visual 100% Persis Pemain
+                        </span>
                       </div>
-
                       <button
                         type="button"
-                        onClick={() => {
-                          if (useDalil) {
-                            setUseDalil(false);
-                            setPageForm((prev) => ({
-                              ...prev,
-                              dalil_title: '',
-                              dalil_arabic: '',
-                              dalil_latin: '',
-                              dalil_translation: '',
-                              dalil_source: '',
-                            }));
-                          } else {
-                            setUseDalil(true);
-                            setPageForm((prev) => ({
-                              ...prev,
-                              dalil_title: prev.dalil_title || 'Dalil Al-Qur\'an / Hadits',
-                            }));
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                          useDalil
-                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        }`}
+                        onClick={handlePreviewCurrentDraftPage}
+                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer"
                       >
-                        {useDalil ? (
-                          <>
-                            <X className="w-3.5 h-3.5 text-rose-700" />
-                            <span>Hapus / Nonaktifkan Dalil</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>+ Tambahkan Dalil</span>
-                          </>
-                        )}
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Buka Layar Penuh</span>
                       </button>
                     </div>
 
-                    {useDalil ? (
-                      <div className="space-y-3 pt-3">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                            Judul Dalil *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Contoh: Hadits Rukun Islam (HR. Bukhari & Muslim)"
-                            value={pageForm.dalil_title || ''}
-                            onChange={(e) => setPageForm({ ...pageForm, dalil_title: e.target.value })}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
-                          />
+                    <div className="w-full rounded-2xl overflow-hidden border-2 border-amber-300 shadow-lg relative bg-slate-900 h-[480px]">
+                      <EducationBook
+                        chapter={activeChapter || { id: 'preview', title: 'Pratinjau', description: '', cover_icon: '📖', category_id: '', category_name: '', theme_id: 'islamic', chapter_number: 1, is_published: true, total_pages: 1, created_at: '', updated_at: '' }}
+                        initialPages={[createDraftPageFromForm()]}
+                        onBack={() => setPageFormTab('CONTENT')}
+                        isPreviewMode={true}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* INTERACTIVE TAB (DALIL & FUN FACT) */
+                  <div className="space-y-5">
+                    {/* Info Header Banner */}
+                    <div className="p-3 bg-gradient-to-r from-emerald-50 to-amber-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-white rounded-xl shadow-xs text-base">✨</span>
+                        <div>
+                          <div className="font-black text-slate-800">Fitur Modal Tambahan (Opsional)</div>
+                          <p className="text-[11px] text-slate-500 font-medium">
+                            Bisa ditambahkan jika ingin menampilkan tombol "Lihat Dalil" atau "Tahukah Kamu?" pada buku.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 1. SEKSI MODAL DALIL (Al-Qur'an / Hadits) */}
+                    <div className={`p-4 rounded-2xl border transition ${useDalil ? 'bg-emerald-50/70 border-emerald-300 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+                        <div className="flex items-center gap-2">
+                          <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm font-bold">
+                            📖
+                          </span>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                              1. Modal Dalil (Al-Qur'an / Hadits)
+                            </h4>
+                            <p className="text-[10px] text-slate-500 font-semibold">
+                              {useDalil ? 'Fitur Dalil Aktif (Tombol "Lihat Dalil" akan muncul)' : 'Opsional — Saat ini Tidak Digunakan'}
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                            Teks Arab Dalil (Opsional)
-                          </label>
-                          <textarea
-                            rows={2}
-                            dir="rtl"
-                            placeholder="بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ..."
-                            value={pageForm.dalil_arabic || ''}
-                            onChange={(e) => setPageForm({ ...pageForm, dalil_arabic: e.target.value })}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (useDalil) {
+                              setUseDalil(false);
+                              setPageForm((prev) => ({
+                                ...prev,
+                                dalil_title: '',
+                                dalil_arabic: '',
+                                dalil_latin: '',
+                                dalil_translation: '',
+                                dalil_source: '',
+                              }));
+                            } else {
+                              setUseDalil(true);
+                              setPageForm((prev) => ({
+                                ...prev,
+                                dalil_title: prev.dalil_title || 'Dalil Al-Qur\'an / Hadits',
+                              }));
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                            useDalil
+                              ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                        >
+                          {useDalil ? (
+                            <>
+                              <X className="w-3.5 h-3.5 text-rose-700" />
+                              <span>Hapus / Nonaktifkan Dalil</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>+ Tambahkan Dalil</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {useDalil ? (
+                        <div className="space-y-3 pt-3">
                           <div className="space-y-1">
                             <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                              Teks Transliterasi Latin
+                              Judul Dalil *
                             </label>
                             <input
                               type="text"
-                              placeholder="Buniyal-islaamu 'alaa khamsin..."
-                              value={pageForm.dalil_latin || ''}
-                              onChange={(e) => setPageForm({ ...pageForm, dalil_latin: e.target.value })}
-                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                              placeholder="Contoh: Hadits Rukun Islam (HR. Bukhari & Muslim)"
+                              value={pageForm.dalil_title || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, dalil_title: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500"
                             />
                           </div>
 
                           <div className="space-y-1">
                             <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                              Sumber Dalil (Kitab / Perawi)
+                              Teks Arab Dalil (Opsional)
                             </label>
-                            <input
-                              type="text"
-                              placeholder="Hadits Shahih Bukhari No. 8"
-                              value={pageForm.dalil_source || ''}
-                              onChange={(e) => setPageForm({ ...pageForm, dalil_source: e.target.value })}
+                            <textarea
+                              rows={2}
+                              dir="rtl"
+                              placeholder="بُنِيَ الإِسْلاَمُ عَلَى خَمْسٍ..."
+                              value={pageForm.dalil_arabic || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, dalil_arabic: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                                Teks Transliterasi Latin
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Buniyal-islaamu 'alaa khamsin..."
+                                value={pageForm.dalil_latin || ''}
+                                onChange={(e) => setPageForm({ ...pageForm, dalil_latin: e.target.value })}
+                                className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                                Sumber Dalil (Kitab / Perawi)
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Hadits Shahih Bukhari No. 8"
+                                value={pageForm.dalil_source || ''}
+                                onChange={(e) => setPageForm({ ...pageForm, dalil_source: e.target.value })}
+                                className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                              Arti / Terjemahan Bahasa Indonesia
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder="Islam dibangun di atas lima perkara..."
+                              value={pageForm.dalil_translation || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, dalil_translation: e.target.value })}
                               className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
                             />
                           </div>
                         </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                            Arti / Terjemahan Bahasa Indonesia
-                          </label>
-                          <textarea
-                            rows={2}
-                            placeholder="Islam dibangun di atas lima perkara..."
-                            value={pageForm.dalil_translation || ''}
-                            onChange={(e) => setPageForm({ ...pageForm, dalil_translation: e.target.value })}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="py-4 text-center space-y-1">
-                        <p className="text-xs font-semibold text-slate-500">
-                          Halaman ini tidak memakai modal Dalil. Tombol "Lihat Dalil" tidak akan muncul.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 2. SEKSI MODAL FUN FACT (Tahukah Kamu?) */}
-                  <div className={`p-4 rounded-2xl border transition ${useFunFact ? 'bg-amber-50/70 border-amber-300 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
-                    <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-bold">
-                          💡
-                        </span>
-                        <div>
-                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                            2. Modal Fun Fact (Tahukah Kamu?)
-                          </h4>
-                          <p className="text-[10px] text-slate-500 font-semibold">
-                            {useFunFact ? 'Fitur Fun Fact Aktif (Tombol "Tahukah Kamu?" akan muncul)' : 'Opsional — Saat ini Tidak Digunakan'}
+                      ) : (
+                        <div className="py-4 text-center space-y-1">
+                          <p className="text-xs font-semibold text-slate-500">
+                            Halaman ini tidak memakai modal Dalil. Tombol "Lihat Dalil" tidak akan muncul.
                           </p>
                         </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (useFunFact) {
-                            setUseFunFact(false);
-                            setPageForm((prev) => ({
-                              ...prev,
-                              fun_fact_title: '',
-                              fun_fact_description: '',
-                            }));
-                          } else {
-                            setUseFunFact(true);
-                            setPageForm((prev) => ({
-                              ...prev,
-                              fun_fact_title: prev.fun_fact_title || 'Tahukah Kamu?',
-                            }));
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                          useFunFact
-                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
-                            : 'bg-amber-500 hover:bg-amber-600 text-amber-950'
-                        }`}
-                      >
-                        {useFunFact ? (
-                          <>
-                            <X className="w-3.5 h-3.5 text-rose-700" />
-                            <span>Hapus / Nonaktifkan Fun Fact</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>+ Tambahkan Fun Fact</span>
-                          </>
-                        )}
-                      </button>
+                      )}
                     </div>
 
-                    {useFunFact ? (
-                      <div className="space-y-3 pt-3">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                            Judul Fun Fact *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Contoh: Tahukah Kamu?"
-                            value={pageForm.fun_fact_title || ''}
-                            onChange={(e) => setPageForm({ ...pageForm, fun_fact_title: e.target.value })}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
-                          />
+                    {/* 2. SEKSI MODAL FUN FACT (Tahukah Kamu?) */}
+                    <div className={`p-4 rounded-2xl border transition ${useFunFact ? 'bg-amber-50/70 border-amber-300 shadow-xs' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+                        <div className="flex items-center gap-2">
+                          <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-bold">
+                            💡
+                          </span>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                              2. Modal Fun Fact (Tahukah Kamu?)
+                            </h4>
+                            <p className="text-[10px] text-slate-500 font-semibold">
+                              {useFunFact ? 'Fitur Fun Fact Aktif (Tombol "Tahukah Kamu?" akan muncul)' : 'Opsional — Saat ini Tidak Digunakan'}
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                            Deskripsi Fakta Unik *
-                          </label>
-                          <textarea
-                            rows={3}
-                            placeholder="Sama seperti bangunan rumah, jika salah satu tiang pondasinya roboh..."
-                            value={pageForm.fun_fact_description || ''}
-                            onChange={(e) => setPageForm({ ...pageForm, fun_fact_description: e.target.value })}
-                            className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
-                          />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (useFunFact) {
+                              setUseFunFact(false);
+                              setPageForm((prev) => ({
+                                ...prev,
+                                fun_fact_title: '',
+                                fun_fact_description: '',
+                              }));
+                            } else {
+                              setUseFunFact(true);
+                              setPageForm((prev) => ({
+                                ...prev,
+                                fun_fact_title: prev.fun_fact_title || 'Tahukah Kamu?',
+                              }));
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                            useFunFact
+                              ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                              : 'bg-amber-500 hover:bg-amber-600 text-amber-950'
+                          }`}
+                        >
+                          {useFunFact ? (
+                            <>
+                              <X className="w-3.5 h-3.5 text-rose-700" />
+                              <span>Hapus / Nonaktifkan Fun Fact</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>+ Tambahkan Fun Fact</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {useFunFact ? (
+                        <div className="space-y-3 pt-3">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                              Judul Fun Fact *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Contoh: Tahukah Kamu?"
+                              value={pageForm.fun_fact_title || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, fun_fact_title: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                              Deskripsi Fakta Unik *
+                            </label>
+                            <textarea
+                              rows={3}
+                              placeholder="Sama seperti bangunan rumah, jika salah satu tiang pondasinya roboh..."
+                              value={pageForm.fun_fact_description || ''}
+                              onChange={(e) => setPageForm({ ...pageForm, fun_fact_description: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="py-4 text-center space-y-1">
-                        <p className="text-xs font-semibold text-slate-500">
-                          Halaman ini tidak memakai modal Fun Fact. Tombol "Tahukah Kamu?" tidak akan muncul.
-                        </p>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="py-4 text-center space-y-1">
+                          <p className="text-xs font-semibold text-slate-500">
+                            Halaman ini tidak memakai modal Fun Fact. Tombol "Tahukah Kamu?" tidak akan muncul.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Submit Buttons */}
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+              {/* Submit Buttons (Fixed at bottom) */}
+              <div className="p-4 px-5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsPageModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold"
+                  className="px-4 py-2.5 rounded-xl bg-slate-200/80 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-black shadow-md flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white text-xs font-black shadow-md flex items-center gap-1.5 transition"
                 >
                   <Save className="w-4 h-4" />
                   <span>{editingPageId ? 'SIMPAN HALAMAN' : 'TAMBAH HALAMAN'}</span>
